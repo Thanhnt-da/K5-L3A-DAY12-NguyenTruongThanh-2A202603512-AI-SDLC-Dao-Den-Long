@@ -15,7 +15,7 @@ const $ = (id) => document.getElementById(id);
 
 // ---------- intro text (original lines for this game) ----------
 const INTRO = {
-  1: 'Ông Đăng: "Sương đen nuốt mất ánh sáng Bến rồi, cháu ạ. Gom đom đóm, thắp lại năm ngọn đèn lớn trước khi trời sáng."',
+  1: 'Ông Đăng: "Sương đen nuốt mất ánh sáng Bến rồi, cháu ạ. Thắp đèn rồi giữ cho chúng cháy tới bình minh: đèn cạn dầu là tắt, Bóng Mực lại hút dầu đèn yếu."',
   2: 'Ông Đăng: "Đảo Cau có hai hòn, nối bằng cầu tre. Bục nhảy sẽ đưa cháu qua sông mây. Coi chừng Gió Lạc, nó thích ánh sáng lắm."',
   3: 'Ông Đăng: "Đảo Chuông cao ba tầng. Gió mạnh từng cơn. Thắp bảy ngọn đèn và tiếng chuông sẽ gọi bình minh về."',
 };
@@ -125,7 +125,8 @@ function endNight() {
   } else {
     screen = 'result';
     $('result-title').textContent = won ? `Đêm ${night} – thắp sáng!` : `Đêm ${night} – thất bại`;
-    $('result-text').textContent = won ? `Điểm đêm này: ${world.score} · Tổng: ${totalScore}` : 'Sương đen vẫn còn đó. Thử lại nhé.';
+    const need = Math.ceil(0.6 * world.lanterns.length);
+    $('result-text').textContent = won ? `Giữ đảo sáng tới bình minh! Điểm đêm này: ${world.score} · Tổng: ${totalScore}` : `Cần ít nhất ${need}/${world.lanterns.length} đèn sáng lúc bình minh. Thử lại nhé.`;
     $('result-next').textContent = won ? 'Đêm kế tiếp' : 'Chơi lại Đêm';
     showScreen('result');
   }
@@ -172,6 +173,7 @@ function openSettings(from) {
   settingsBack = from;
   $('set-volume').value = String(settings.volume);
   $('set-sens').value = String(settings.sensitivity);
+  $('set-cb').checked = settings.colorBlind;
   showScreen('settings');
 }
 $('set-volume').oninput = (e) => {
@@ -181,6 +183,10 @@ $('set-volume').oninput = (e) => {
 };
 $('set-sens').oninput = (e) => {
   settings.sensitivity = Number(e.target.value);
+  saveSettings(settings);
+};
+$('set-cb').onchange = (e) => {
+  settings.colorBlind = e.target.checked;
   saveSettings(settings);
 };
 $('set-back').onclick = () => showScreen(settingsBack === 'pause' ? 'pause' : 'menu');
@@ -218,8 +224,8 @@ function frame(now) {
     }
   }
   if (scene && world) {
-    scene.render(world, camYawDeg, now / 1000);
-    if (screen === 'play') hud.update(world, scene, now / 1000, totalScore);
+    scene.render(world, camYawDeg, now / 1000, settings.colorBlind);
+    if (screen === 'play') hud.update(world, scene, now / 1000, totalScore, settings.colorBlind);
   } else {
     renderer.setClearColor(0x0e1430);
     renderer.clear();

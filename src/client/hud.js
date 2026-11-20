@@ -3,6 +3,7 @@
 // dash/pulse cooldown icons bottom-right, "E — Nạp ánh sáng (x/10)" prompt near a
 // lantern, arrow to the nearest unlit lantern when it is off screen.
 import { TUNING } from '../sim/config.js';
+import { capacityOf } from '../sim/world.js';
 
 const $ = (id) => document.getElementById(id);
 const distXZ = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
@@ -18,7 +19,7 @@ export class Hud {
     this.pulse = $('hud-pulse');
     this.prompt = $('hud-prompt');
     this.arrow = $('hud-arrow');
-    this.bar.innerHTML = '<i></i>'.repeat(TUNING.carry_capacity);
+    this.bar.innerHTML = '<i></i>'.repeat(TUNING.capacity_max);
     this.cells = [...this.bar.children];
   }
 
@@ -26,17 +27,25 @@ export class Hud {
     this.root.hidden = !on;
   }
 
-  update(w, scene, t, totalScore) {
+  update(w, scene, t, totalScore, colorBlind = false) {
     const p = w.player;
     this.flames.textContent = '🔥'.repeat(p.flames) + '·'.repeat(Math.max(0, TUNING.flames - p.flames));
     const s = Math.ceil(w.timeLeft);
     this.timer.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     const danger = w.timeLeft <= 30;
     this.timer.classList.toggle('danger', danger);
+    this.timer.classList.toggle('cb', colorBlind);
+    if (danger && colorBlind) this.timer.textContent = `⚠ ${this.timer.textContent}`;
     this.timer.style.visibility = danger && Math.floor(t * 2) % 2 ? 'hidden' : 'visible';
     const lit = w.lanterns.filter((l) => l.lit).length;
     this.right.textContent = `🏮 ${lit}/${w.lanterns.length}   ★ ${totalScore + w.score}`;
-    this.cells.forEach((c, i) => c.classList.toggle('on', i < p.carried));
+    const cap = capacityOf(p);
+    this.cells.forEach((c, i) => {
+      c.classList.toggle('on', i < p.carried);
+      c.hidden = i >= cap;
+    });
+    this.bar.title = `${p.carried} / ${cap}`;
+    this.bar.dataset.label = `${p.carried} / ${cap}`;
     const cd = (el, ticksLeft, total) => {
       el.style.setProperty('--cd', ticksLeft > 0 ? String(ticksLeft / total) : '0');
       el.classList.toggle('ready', ticksLeft === 0);
@@ -46,9 +55,10 @@ export class Hud {
     this.pulse.classList.toggle('ready', p.pulseCdTicks === 0 && p.carried >= TUNING.pulse_cost);
 
     const unlit = w.lanterns.filter((l) => !l.lit);
-    const near = unlit.find((l) => distXZ(p.pos, l.pos) <= TUNING.interact_radius);
+    const near = w.lanterns.find((l) => distXZ(p.pos, l.pos) <= TUNING.interact_radius);
     this.prompt.hidden = !near;
-    if (near) this.prompt.textContent = `E — Nạp ánh sáng (${near.deposited}/${TUNING.lantern_cost})`;
+    if (near && !near.lit) this.prompt.textContent = `E — Nạp ánh sáng (${near.deposited}/${near.everLit ? TUNING.relight_cost : TUNING.lantern_cost})`;
+    else if (near) this.prompt.textContent = `E — Châm dầu (${Math.floor(near.fuel / 60)}/${TUNING.fuel_max})`;
 
     // arrow to the nearest unlit lantern when it is off screen
     let target = null;

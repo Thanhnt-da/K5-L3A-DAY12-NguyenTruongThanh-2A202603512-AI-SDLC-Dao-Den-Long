@@ -16,6 +16,7 @@ export const PAL = {
   moteHalo: 0xffe58a,
   shade: 0x120a1a,
   shadeRim: 0x7a3cff,
+  shadeRimCB: 0x00b3ff, // Ticket-03 colour-blind palette
   shadeStunned: 0x3a3450,
   coat: 0xe8e2d0,
   scarf: 0xc8102e,
@@ -97,10 +98,21 @@ function makeLantern() {
   const light = new THREE.PointLight(PAL.lit, 0, 16);
   light.position.y = 3.4;
   const zone = new THREE.Mesh(new THREE.RingGeometry(5.8, 6, 48), new THREE.MeshBasicMaterial({ color: PAL.lit, transparent: true, opacity: 0, side: THREE.DoubleSide }));
+  // fuel bar above the lamp (Ticket-03): back plate + fill scaled by fuel / 100
+  const barBack = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.18), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 }));
+  const bar = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.14), new THREE.MeshBasicMaterial({ color: PAL.lit }));
+  barBack.position.y = bar.position.y = 4.4;
+  bar.position.z = 0.01;
+  // torn paper strips, shown on unlit lanterns so lit/unlit differ without colour
+  const torn = new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.5, 5, 1, true), std(PAL.unlit, { side: THREE.DoubleSide }));
+  torn.position.y = 3.0;
+  torn.rotation.x = Math.PI;
   zone.rotation.x = -Math.PI / 2;
   zone.position.y = 0.05;
-  g.add(pillar, lamp, light, zone);
-  g.userData = { lamp, light, zone };
+  const head = new THREE.Group();
+  head.add(lamp, light, torn);
+  g.add(pillar, head, zone, barBack, bar);
+  g.userData = { lamp, light, zone, bar, barBack, head, torn };
   return g;
 }
 
@@ -170,7 +182,7 @@ export class NightScene {
     }
   }
 
-  render(w, camYawDeg, t) {
+  render(w, camYawDeg, t, colorBlind = false) {
     const p = w.player;
     this.may.position.set(...p.pos);
     this.may.rotation.y = Math.atan2(p.facing[0], p.facing[1]);
@@ -180,12 +192,25 @@ export class NightScene {
     for (const l of w.lanterns) {
       const g = this.maps.lanterns.get(l.id);
       g.position.set(...l.pos);
-      const frac = l.deposited / 10;
-      g.userData.lamp.material.color.setHex(l.lit ? PAL.litCore : PAL.unlit);
-      g.userData.lamp.material.emissive.setHex(l.lit ? PAL.lit : PAL.lit);
-      g.userData.lamp.material.emissiveIntensity = l.lit ? 1 : frac * 0.6;
-      g.userData.light.intensity = l.lit ? 10 : frac * 3;
-      g.userData.zone.material.opacity = l.lit ? 0.35 : 0;
+      const u = g.userData;
+      const cost = l.everLit ? 5 : 10;
+      const frac = l.deposited / cost;
+      const fuel = l.lit ? l.fuel / 60 : 0; // sim keeps fuel in 1/60 units
+      const low = l.lit && fuel < 30;
+      const blinkOff = low && Math.floor(t * 2) % 2 === 1; // 1 Hz slow blink
+      u.lamp.material.color.setHex(l.lit ? PAL.litCore : PAL.unlit);
+      u.lamp.material.emissive.setHex(PAL.lit);
+      u.lamp.material.emissiveIntensity = l.lit ? (blinkOff ? 0.2 : 1) : frac * 0.6;
+      u.light.intensity = l.lit ? (blinkOff ? 2 : 4 + 6 * (fuel / 100)) : frac * 3;
+      u.zone.material.opacity = l.lit && !low ? 0.35 : 0; // fuel < 30: no safe zone
+      u.bar.visible = u.barBack.visible = l.lit && !blinkOff;
+      u.bar.scale.x = Math.max(0.001, fuel / 100);
+      u.bar.position.x = -0.8 * (1 - fuel / 100);
+      u.bar.material.color.setHex(low ? (colorBlind ? 0xffffff : 0xff5a5f) : PAL.lit);
+      u.bar.quaternion.copy(this.camera.quaternion);
+      u.barBack.quaternion.copy(this.camera.quaternion);
+      u.head.rotation.z = l.lit ? 0 : 0.2; // unlit lanterns tilt (shape cue, not only colour)
+      u.torn.visible = !l.lit;
     }
     this.sync(this.maps.motes, w.motes, () => {
       const g = new THREE.Group();
@@ -198,6 +223,8 @@ export class NightScene {
       const g = this.maps.shades.get(s.id);
       g.position.set(...s.pos);
       g.userData.body.material.color.setHex(s.state === 'stunned' ? PAL.shadeStunned : PAL.shade);
+      g.userData.body.material.emissive.setHex(colorBlind ? PAL.shadeRimCB : PAL.shadeRim);
+      g.userData.body.material.emissiveIntensity = s.state === 'drain' ? 0.6 : 0.25;
       g.scale.setScalar(s.state === 'spawning' ? 0.5 : 1);
     }
     this.sync(this.maps.drifters, w.drifters, makeDrifter);
