@@ -1,0 +1,19 @@
+✔ game.contract.json has every required key (2.3206ms)
+✔ CLI writes snapshot at tick 0, every N ticks, and a final end line; exit 0 (86.1ms)
+✔ default --snapshot-every is 10 (4.13ms)
+✔ malformed inputs / scenario => exit 2 with stderr message (398.6967ms)
+✔ missing required argument => non-zero exit (85.0428ms)
+✔ tick model: input at tick k moves the player in step k; time_left_s = start - steps/60 (0.8946ms)
+✔ move is rotated by cam_yaw_deg and normalised (1.2342ms)
+✔ scenario setup: replaces lists, keeps unmentioned lanterns, emits nothing, scores nothing (0.7142ms)
+✔ dawn: game ends lost/dawn when time runs out, event tick = k+1, run stops early (1.2257ms)
+✔ determinism: same seed/scenario/inputs => byte-identical output (two CLI runs) (179.4552ms)
+✔ different seeds give different random mote layouts (0.786ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 925.7688
