@@ -278,6 +278,11 @@ export class NightScene {
       const th = (camYawDeg * Math.PI) / 180;
       this.camera.position.set(p.pos[0] - Math.sin(th) * 9, p.pos[1] + 5, p.pos[2] - Math.cos(th) * 9);
       this.camera.lookAt(p.pos[0], p.pos[1] + 1.2, p.pos[2]);
+      if (this.shakeUntil > t) {
+        // hit shake (off with "Giảm chuyển động")
+        this.camera.position.x += Math.sin(t * 90) * 0.15;
+        this.camera.position.y += Math.cos(t * 77) * 0.15;
+      }
     }
     this.renderer.render(this.scene, this.camera);
   }

@@ -1,19 +1,26 @@
-// Volume and mouse sensitivity, saved between launches (Ticket-02 Part 3.5).
+// Player settings, saved between launches: volume, mouse sensitivity (Ticket-02),
+// colour-blind palette (Ticket-03), key bindings, reduced motion, UI scale (Ticket-04).
 // localStorage can be missing or throw (private mode); the game still runs with defaults.
+import { DEFAULT_KEYS, sanitizeKeys } from './keys.js';
+
 const KEY = 'dao-den-long.settings';
-const DEFAULTS = { volume: 0.6, sensitivity: 0.3, colorBlind: false };
 
 export function loadSettings() {
+  let s = {};
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) ?? '{}');
-    return {
-      volume: Number.isFinite(s.volume) ? Math.min(1, Math.max(0, s.volume)) : DEFAULTS.volume,
-      sensitivity: Number.isFinite(s.sensitivity) ? Math.min(1, Math.max(0.05, s.sensitivity)) : DEFAULTS.sensitivity,
-      colorBlind: s.colorBlind === true,
-    };
+    s = JSON.parse(localStorage.getItem(KEY) ?? '{}') ?? {};
   } catch {
-    return { ...DEFAULTS };
+    s = {};
   }
+  const num = (v, lo, hi, d) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
+  return {
+    volume: num(s.volume, 0, 1, 0.6),
+    sensitivity: num(s.sensitivity, 0.05, 1, 0.3),
+    colorBlind: s.colorBlind === true,
+    reducedMotion: s.reducedMotion === true,
+    uiScale: s.uiScale === 1.25 ? 1.25 : 1,
+    keys: sanitizeKeys(s.keys ?? DEFAULT_KEYS),
+  };
 }
 
 export function saveSettings(s) {

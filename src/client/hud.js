@@ -19,8 +19,36 @@ export class Hud {
     this.pulse = $('hud-pulse');
     this.prompt = $('hud-prompt');
     this.arrow = $('hud-arrow');
+    this.cueEl = $('hud-cues');
+    this.shadeArrow = $('hud-shade');
     this.bar.innerHTML = '<i></i>'.repeat(TUNING.capacity_max);
     this.cells = [...this.bar.children];
+  }
+
+  /** Visual stand-ins for sounds (Ticket-04 Part 4). */
+  cues(w, scene, shadeId) {
+    const lines = [];
+    // strong wind: warning 2 s (120 ticks) before each gust
+    if (w.windEnabled && !w.wind.active && 1800 - (w.simTick % 1800) <= 120) lines.push('🍃 ⚠ Gió mạnh sắp tới!');
+    if (w.wind.active) lines.push('🍃 Gió mạnh');
+    if (w.timeLeft <= 10) lines.push(`⏳ Còn ${Math.ceil(w.timeLeft)} giây`);
+    const weak = w.lanterns.filter((l) => l.lit && l.fuel < 30 * 60).map((l) => l.id);
+    if (weak.length) lines.push(`🏮 ⚠ Đèn sắp cạn dầu: ${weak.join(', ')}`);
+    this.cueEl.textContent = lines.join('\n');
+    // arrow at the screen edge towards a Bóng Mực that just appeared
+    const s = shadeId && w.shades.find((x) => x.id === shadeId);
+    this.shadeArrow.hidden = !s;
+    if (s) {
+      const sp = scene.project(s.pos) ?? { x: 0.5, y: 1.2 };
+      const dx = sp.x - 0.5;
+      const dy = sp.y - 0.5;
+      const k = 0.45 / Math.max(Math.abs(dx), Math.abs(dy), 0.01);
+      const ex = 0.5 + dx * Math.min(1, k);
+      const ey = 0.5 + dy * Math.min(1, k);
+      this.shadeArrow.style.left = `${ex * 100}%`;
+      this.shadeArrow.style.top = `${ey * 100}%`;
+      this.shadeArrow.style.transform = `translate(-50%, -50%) rotate(${Math.atan2(dy, dx) + Math.PI / 2}rad)`;
+    }
   }
 
   show(on) {

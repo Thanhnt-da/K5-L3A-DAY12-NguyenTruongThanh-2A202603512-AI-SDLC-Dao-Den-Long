@@ -5,36 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Đảo Đèn Lồng</title>
     <style>
-      /* Ticket-02 standard palette: UI text #F5F1E6, danger #FF5A5F, gold #F2C14E, night #0E1430 / #1B2350 */
-      :root { --text: #f5f1e6; --danger: #ff5a5f; --gold: #f2c14e; --night: #0e1430; --fog: #1b2350; --lit: #ffb347; --mote: #fff6c2; }
+      /* Ticket-02 palette: UI text #F5F1E6, danger #FF5A5F, gold #F2C14E, night #0E1430 / #1B2350.
+         Ticket-04: all UI text >= 18 px at 1280x720; --ui = 1.25 for the larger UI option. */
+      :root { --ui: 1; --text: #f5f1e6; --danger: #ff5a5f; --gold: #f2c14e; --night: #0e1430; --fog: #1b2350; --lit: #ffb347; --mote: #fff6c2; }
+      html { font-size: calc(18px * var(--ui)); }
       html, body { margin: 0; height: 100%; overflow: hidden; background: var(--night); font-family: system-ui, sans-serif; color: var(--text); }
       canvas { display: block; }
       [hidden] { display: none !important; }
-      .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: rgba(14, 20, 48, 0.82); text-align: center; padding: 16px; }
-      .screen h1 { color: var(--gold); font-size: clamp(28px, 6vw, 52px); margin: 0; }
-      .screen p { max-width: 560px; line-height: 1.5; margin: 0; }
-      .screen button { font: inherit; font-size: 18px; padding: 10px 22px; min-width: 200px; border-radius: 10px; border: 2px solid var(--gold); background: var(--fog); color: var(--text); cursor: pointer; }
+      .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.7rem; background: rgba(14, 20, 48, 0.86); text-align: center; padding: 16px; overflow: auto; font-size: 1rem; }
+      .screen h1 { color: var(--gold); font-size: 2.4rem; margin: 0; }
+      .screen p { max-width: 34rem; line-height: 1.5; margin: 0; }
+      .screen button { font: inherit; font-size: 1rem; padding: 0.5rem 1.2rem; min-width: 12rem; border-radius: 10px; border: 2px solid var(--gold); background: var(--fog); color: var(--text); cursor: pointer; }
       .screen button:hover, .screen button:focus { background: var(--gold); color: var(--night); }
-      .screen label { display: flex; gap: 12px; align-items: center; }
+      .screen label { display: flex; gap: 0.7rem; align-items: center; }
+      .screen input[type='text'] { font: inherit; padding: 0.4rem 0.7rem; border-radius: 8px; border: 2px solid var(--gold); background: var(--night); color: var(--text); width: 14rem; }
+      .warn { color: var(--danger); min-height: 1.4em; }
+      #keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.4rem; width: min(52rem, 100%); }
+      #keys .key-row { min-width: 0; text-align: left; }
+      table { border-collapse: collapse; }
+      td, th { padding: 0.25rem 0.8rem; border-bottom: 1px solid #ffffff22; }
       #dawn { background: linear-gradient(#ffb347cc, #0e1430ee); }
-      #hud { position: fixed; inset: 0; pointer-events: none; font-size: 18px; text-shadow: 0 1px 3px #000; }
-      #hud-flames { position: absolute; top: 12px; left: 16px; font-size: 24px; }
-      #hud-timer { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 28px; font-variant-numeric: tabular-nums; }
+      #hud { position: fixed; inset: 0; pointer-events: none; font-size: 1rem; text-shadow: 0 1px 3px #000; }
+      #hud-flames { position: absolute; top: 12px; left: 16px; font-size: 1.4rem; }
+      #hud-timer { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 1.6rem; font-variant-numeric: tabular-nums; }
       #hud-timer.danger { color: var(--danger); }
       #hud-timer.danger.cb { color: #ffffff; }
-      #hud-bar::after { content: attr(data-label); margin-left: 8px; color: var(--gold); }
       #hud-right { position: absolute; top: 14px; right: 16px; color: var(--gold); white-space: pre; }
-      #hud-bar { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
-      #hud-bar i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--gold); opacity: 0.6; }
+      #hud-bar { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; align-items: center; }
+      #hud-bar i { width: 0.9rem; height: 0.9rem; border-radius: 50%; border: 2px solid var(--gold); opacity: 0.6; }
       #hud-bar i.on { background: var(--mote); box-shadow: 0 0 8px #ffe58a; opacity: 1; }
+      #hud-bar::after { content: attr(data-label); margin-left: 8px; color: var(--gold); }
       #hud-cds { position: absolute; bottom: 14px; right: 16px; display: flex; gap: 10px; }
-      .cd { --cd: 0; position: relative; width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--gold); display: grid; place-items: center; font-size: 12px; background: conic-gradient(rgba(0, 0, 0, 0.65) calc(var(--cd) * 360deg), transparent 0); }
+      .cd { --cd: 0; position: relative; width: 3.4rem; height: 3.4rem; border-radius: 50%; border: 2px solid var(--gold); display: grid; place-items: center; background: conic-gradient(rgba(0, 0, 0, 0.65) calc(var(--cd) * 360deg), transparent 0); }
       .cd.ready { box-shadow: 0 0 10px var(--lit); }
-      #hud-prompt { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); background: rgba(14, 20, 48, 0.8); border: 1px solid var(--gold); padding: 6px 14px; border-radius: 8px; }
-      #hud-arrow { position: absolute; top: 50%; left: 50%; font-size: 40px; color: var(--lit); margin-top: -90px; }
-      #help { position: fixed; bottom: 4px; left: 8px; font-size: 11px; opacity: 0.6; pointer-events: none; }
-      #fps { position: fixed; top: 50px; left: 16px; font-size: 12px; color: var(--gold); pointer-events: none; }
-      @media (max-width: 700px) { #help { display: none; } #hud { font-size: 14px; } #hud-bar { bottom: 84px; } #hud-bar i { width: 14px; height: 14px; } #hud-prompt { bottom: 120px; } }
+      #hud-prompt { position: absolute; bottom: 4rem; left: 50%; transform: translateX(-50%); background: rgba(14, 20, 48, 0.8); border: 1px solid var(--gold); padding: 6px 14px; border-radius: 8px; }
+      #hud-arrow { position: absolute; top: 50%; left: 50%; font-size: 2.2rem; color: var(--lit); margin-top: -90px; }
+      #hud-shade { position: absolute; font-size: 2.2rem; color: #b98cff; }
+      #hud-cues { position: absolute; top: 3.4rem; left: 50%; transform: translateX(-50%); white-space: pre; text-align: center; color: var(--text); }
+      #help { position: absolute; bottom: 4px; left: 8px; opacity: 0.7; }
+      #flash { position: fixed; inset: 0; background: rgba(255, 90, 95, 0.25); pointer-events: none; }
+      #fps { position: fixed; top: 3rem; left: 16px; color: var(--gold); pointer-events: none; }
+      @media (max-width: 900px) { #help { display: none; } #hud-bar { bottom: 5rem; } #hud-prompt { bottom: 7rem; } }
     </style>
   </head>
   <body>
@@ -42,18 +53,22 @@
       <div id="hud-flames"></div>
       <div id="hud-timer"></div>
       <div id="hud-right"></div>
+      <div id="hud-cues"></div>
       <div id="hud-bar"></div>
       <div id="hud-cds"><div class="cd" id="hud-dash">Lướt</div><div class="cd" id="hud-pulse">Tỏa</div></div>
       <div id="hud-prompt" hidden></div>
       <div id="hud-arrow" hidden>▲</div>
-      <div id="help">W/S A/D move · drag mouse or Q/R ←/→ camera · Space jump · Shift dash · E deposit · F pulse · Esc/P pause</div>
+      <div id="hud-shade" hidden>▲</div>
+      <div id="help">Esc/P: tạm dừng · Cài đặt: đổi phím</div>
     </div>
+    <div id="flash" hidden></div>
     <div id="fps" hidden></div>
 
     <section class="screen" id="menu">
       <h1>Đảo Đèn Lồng</h1>
-      <p>Mây gom đom đóm, thắp lại Đèn Lồng Lớn và né Bóng Mực trong sương đen. Ba đêm, ba hòn đảo.</p>
+      <p>Mây gom đom đóm, thắp và giữ cho Đèn Lồng Lớn cháy tới bình minh, né Bóng Mực trong sương đen. Ba đêm, ba hòn đảo.</p>
       <button id="menu-start">Bắt đầu</button>
+      <button id="menu-board">Bảng xếp hạng</button>
       <button id="menu-settings">Cài đặt</button>
     </section>
     <section class="screen" id="intro" hidden>
@@ -73,6 +88,22 @@
       <p>Tổng điểm: <strong id="dawn-score"></strong></p>
       <button id="dawn-menu">Về menu</button>
     </section>
+    <section class="screen" id="savescore" hidden>
+      <h1>Lưu điểm</h1>
+      <p id="save-summary"></p>
+      <label>Tên <input type="text" id="save-name" maxlength="12" placeholder="3–12 ký tự" autocomplete="off" /></label>
+      <p class="warn" id="save-error"></p>
+      <button id="save-ok">Lưu (Enter)</button>
+      <button id="save-skip">Bỏ qua</button>
+    </section>
+    <section class="screen" id="board" hidden>
+      <h1>Bảng xếp hạng</h1>
+      <table>
+        <thead><tr><th>#</th><th>Tên</th><th>Điểm</th><th>Đêm</th><th>Thời gian</th></tr></thead>
+        <tbody id="board-rows"></tbody>
+      </table>
+      <button id="board-back">Tiếp tục</button>
+    </section>
     <section class="screen" id="pause" hidden>
       <h1>Tạm dừng</h1>
       <button id="pause-continue">Tiếp tục</button>
@@ -85,6 +116,12 @@
       <label>Âm lượng <input type="range" id="set-volume" min="0" max="1" step="0.05" /></label>
       <label>Độ nhạy chuột <input type="range" id="set-sens" min="0.05" max="1" step="0.05" /></label>
       <label><input type="checkbox" id="set-cb" /> Bảng màu dễ phân biệt</label>
+      <label><input type="checkbox" id="set-rm" /> Giảm chuyển động (tắt rung camera, chớp màn hình)</label>
+      <label><input type="checkbox" id="set-ui" /> Giao diện lớn (×1.25)</label>
+      <p>Phím điều khiển (bấm để đổi). Camera: kéo chuột, Q/R hoặc ←/→.</p>
+      <div id="keys"></div>
+      <p class="warn" id="keys-warn"></p>
+      <button id="keys-reset">Khôi phục mặc định</button>
       <button id="set-back">Quay lại</button>
     </section>
     <script type="module" src="/src/client/main.js"></script>

@@ -11,6 +11,8 @@ import { Hud } from './hud.js';
 import { Sound } from './audio.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { runBench } from './benchmode.js';
+import { ACTIONS, DEFAULT_KEYS, keyName, conflictOf } from './keys.js';
+import { getBoard, submitScore } from './board.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -24,7 +26,14 @@ const INTRO = {
 // ---------- input ----------
 const keys = new Set();
 const taps = new Set(); // pressed since the last sim step: a quick tap between frames still counts
+let capturing = null; // action waiting for a new key in Settings
 addEventListener('keydown', (e) => {
+  if (capturing) {
+    e.preventDefault();
+    captureKey(e.code);
+    return;
+  }
+  if (e.target instanceof HTMLInputElement && e.target.type === 'text') return; // typing a name
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   if (!keys.has(e.code)) {
     taps.add(e.code);
@@ -48,7 +57,6 @@ addEventListener('pointermove', (e) => {
 });
 
 const held = (...codes) => codes.some((c) => keys.has(c));
-const BUTTON_KEYS = { jump: ['Space'], interact: ['KeyE'], pulse: ['KeyF'], dash: ['ShiftLeft', 'ShiftRight'], pause: ['Escape', 'KeyP'] };
 let prevButtons = {};
 let injectPause = false;
 
@@ -57,11 +65,13 @@ function readInput() {
   if (held('ArrowRight', 'KeyR')) camYawDeg -= 120 * DT;
   // Contract: at yaw 0, move z=+1 is +Z and x=+1 is +X. The camera looks along
   // +Z, so +X is screen-left; "right" keys therefore send x = -1.
-  const x = (held('KeyA') ? 1 : 0) - (held('KeyD') ? 1 : 0);
-  const z = (held('KeyW', 'ArrowUp') ? 1 : 0) - (held('KeyS', 'ArrowDown') ? 1 : 0);
+  const K = settings.keys; // remappable (Settings)
+  const x = (held(...K.left) ? 1 : 0) - (held(...K.right) ? 1 : 0);
+  const z = (held(...K.up) ? 1 : 0) - (held(...K.down) ? 1 : 0);
   const cur = {};
   const pressed = {};
-  for (const [b, codes] of Object.entries(BUTTON_KEYS)) {
+  for (const b of ['jump', 'interact', 'pulse', 'dash', 'pause']) {
+    const codes = K[b];
     cur[b] = held(...codes);
     pressed[b] = (cur[b] && !prevButtons[b]) || codes.some((c) => taps.has(c) && !keys.has(c));
   }
@@ -87,6 +97,11 @@ let world = null;
 let scene = null;
 let acc = 0;
 let lastCountdown = null;
+let nightsWon = 0;
+let gameSeed = 0;
+let afterSave = null; // screen to show after the name prompt
+const cues = { shade: null, shadeUntil: 0 }; // visual cues for sounds (Ticket-04 Part 4)
+let flashUntil = 0;
 
 function showScreen(id) {
   for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id;
@@ -95,7 +110,9 @@ function showScreen(id) {
 function startNight(n) {
   night = n;
   scene?.dispose();
-  world = createWorld({ seed: (Date.now() >>> 0) ^ (n * 7919), night: n });
+  const seed = ((Date.now() >>> 0) ^ (n * 7919)) >>> 0;
+  if (n === firstNight || !gameSeed) gameSeed = seed;
+  world = createWorld({ seed, night: n });
   scene = new NightScene(renderer, world.map);
   scene.resize(innerWidth, innerHeight);
   scene.warm(world);
@@ -119,26 +136,61 @@ function play() {
 
 function endNight() {
   const won = world.state === 'won';
-  if (won) totalScore += world.score;
+  if (won) {
+    totalScore += world.score;
+    nightsWon++;
+  }
   if (won && night === 3) {
     screen = 'dawn';
     $('dawn-score').textContent = String(totalScore);
-    showScreen('dawn');
+    askName('dawn');
   } else {
     screen = 'result';
     $('result-title').textContent = won ? `Đêm ${night} – thắp sáng!` : `Đêm ${night} – thất bại`;
     const need = Math.ceil(0.6 * world.lanterns.length);
     $('result-text').textContent = won ? `Giữ đảo sáng tới bình minh! Điểm đêm này: ${world.score} · Tổng: ${totalScore}` : `Cần ít nhất ${need}/${world.lanterns.length} đèn sáng lúc bình minh. Thử lại nhé.`;
     $('result-next').textContent = won ? 'Đêm kế tiếp' : 'Chơi lại Đêm';
-    showScreen('result');
+    if (won) showScreen('result');
+    else askName('result'); // Ticket-04: offer the leaderboard after any loss
   }
   hud.show(false);
   sound.stopMusic();
 }
 
+function askName(next) {
+  afterSave = next;
+  screen = 'savescore';
+  $('save-summary').textContent = `Tổng điểm: ${totalScore} · Đêm thắng: ${nightsWon}/3`;
+  $('save-error').textContent = '';
+  showScreen('savescore');
+  $('save-name').focus();
+}
+
+async function saveName() {
+  try {
+    await submitScore({ name: $('save-name').value, score: totalScore, nights_won: nightsWon, seed: gameSeed });
+    await showBoard(afterSave);
+  } catch (e) {
+    $('save-error').textContent = `⚠ ${e.message}`;
+  }
+}
+
+let boardBack = 'menu';
+async function showBoard(back = 'menu') {
+  boardBack = back;
+  const entries = await getBoard();
+  $('board-rows').innerHTML = entries.length
+    ? entries.map((e, i) => `<tr><td>${i + 1}</td><td>${e.name.replace(/[<&]/g, '')}</td><td>${e.score}</td><td>${e.nights_won}/3</td><td>${e.achieved_at.slice(0, 16).replace('T', ' ')}</td></tr>`).join('')
+    : '<tr><td colspan="5">Chưa có ai. Hãy là người đầu tiên!</td></tr>';
+  screen = 'board';
+  showScreen('board');
+}
+
 function toMenu() {
   screen = 'menu';
   totalScore = 0;
+  nightsWon = 0;
+  gameSeed = 0;
   sound.stopMusic();
   hud.show(false);
   showScreen('menu');
@@ -146,10 +198,12 @@ function toMenu() {
 
 function onKeyPress(code) {
   if (code !== 'Enter') return;
-  if (screen === 'menu') startNight(firstNight);
+  if (screen === 'menu') $('menu-start').click();
   else if (screen === 'intro') play();
+  else if (screen === 'savescore') saveName();
   else if (screen === 'result') $('result-next').click();
   else if (screen === 'dawn') toMenu();
+  else if (screen === 'board') $('board-back').click();
 }
 
 // buttons
@@ -158,7 +212,22 @@ const firstNight = [1, 2, 3].includes(Number(new URLSearchParams(location.search
 $('menu-start').onclick = () => {
   sound.unlock();
   totalScore = 0;
+  nightsWon = 0;
+  gameSeed = 0;
   startNight(firstNight);
+};
+$('menu-board').onclick = () => showBoard('menu');
+$('save-ok').onclick = saveName;
+$('save-name').onkeydown = (e) => {
+  if (e.key === 'Enter') saveName(); // the global key handler ignores text fields
+};
+$('save-skip').onclick = () => {
+  screen = afterSave;
+  showScreen(afterSave);
+};
+$('board-back').onclick = () => {
+  screen = boardBack;
+  showScreen(boardBack);
 };
 $('menu-settings').onclick = () => openSettings('menu');
 $('intro-go').onclick = play;
@@ -176,6 +245,9 @@ function openSettings(from) {
   $('set-volume').value = String(settings.volume);
   $('set-sens').value = String(settings.sensitivity);
   $('set-cb').checked = settings.colorBlind;
+  $('set-rm').checked = settings.reducedMotion;
+  $('set-ui').checked = settings.uiScale === 1.25;
+  renderKeys();
   showScreen('settings');
 }
 $('set-volume').oninput = (e) => {
@@ -191,7 +263,56 @@ $('set-cb').onchange = (e) => {
   settings.colorBlind = e.target.checked;
   saveSettings(settings);
 };
-$('set-back').onclick = () => showScreen(settingsBack === 'pause' ? 'pause' : 'menu');
+$('set-rm').onchange = (e) => {
+  settings.reducedMotion = e.target.checked;
+  saveSettings(settings);
+};
+$('set-ui').onchange = (e) => {
+  settings.uiScale = e.target.checked ? 1.25 : 1;
+  applyUiScale();
+  saveSettings(settings);
+};
+function applyUiScale() {
+  document.documentElement.style.setProperty('--ui', String(settings.uiScale));
+}
+applyUiScale();
+
+// key remapping: click an action, press a key; a key already used elsewhere is refused with a warning
+function renderKeys() {
+  $('keys').innerHTML = ACTIONS.map(([a, label]) => `<button data-act="${a}" class="key-row">${label}: <b>${capturing === a ? '…' : settings.keys[a].map(keyName).join(' / ')}</b></button>`).join('');
+  for (const b of $('keys').querySelectorAll('button')) b.onclick = () => {
+    capturing = b.dataset.act;
+    $('keys-warn').textContent = 'Nhấn phím mới (Esc để hủy)';
+    renderKeys();
+  };
+}
+function captureKey(code) {
+  const action = capturing;
+  capturing = null;
+  if (code === 'Escape' && action !== 'pause') {
+    $('keys-warn').textContent = '';
+  } else {
+    const other = conflictOf(settings.keys, action, code);
+    if (other) {
+      $('keys-warn').textContent = `⚠ Phím ${keyName(code)} đã dùng cho "${ACTIONS.find(([a]) => a === other)[1]}". Chọn phím khác.`;
+    } else {
+      settings.keys[action] = [code];
+      saveSettings(settings);
+      $('keys-warn').textContent = '';
+    }
+  }
+  renderKeys();
+}
+$('keys-reset').onclick = () => {
+  settings.keys = structuredClone(DEFAULT_KEYS);
+  saveSettings(settings);
+  $('keys-warn').textContent = 'Đã khôi phục mặc định';
+  renderKeys();
+};
+$('set-back').onclick = () => {
+  capturing = null;
+  showScreen(settingsBack === 'pause' ? 'pause' : 'menu');
+};
 
 // ---------- FPS meter (for the >= 30 FPS @ 1280x720 check) ----------
 const fps = { frames: 0, start: performance.now(), avg: 0 };
@@ -210,7 +331,17 @@ function frame(now) {
     while (acc >= DT && world.state === 'playing') {
       const input = readInput();
       const wasGrounded = world.player.grounded;
-      for (const e of step(world, input)) sound.event(e);
+      for (const e of step(world, input)) {
+        sound.event(e);
+        if (e.name === 'shade_spawned') {
+          cues.shade = e.data.id;
+          cues.shadeUntil = now + 2500;
+        }
+        if (e.name === 'player_hit' && !settings.reducedMotion) {
+          flashUntil = now + 250;
+          scene.shakeUntil = now / 1000 + 0.35;
+        }
+      }
       if (input.pressed.jump && wasGrounded && !world.player.grounded) sound.jump();
       acc -= DT;
     }
@@ -227,7 +358,11 @@ function frame(now) {
   }
   if (scene && world) {
     scene.render(world, camYawDeg, now / 1000, settings.colorBlind);
-    if (screen === 'play') hud.update(world, scene, now / 1000, totalScore, settings.colorBlind);
+    if (screen === 'play') {
+      hud.update(world, scene, now / 1000, totalScore, settings.colorBlind);
+      hud.cues(world, scene, cues.shadeUntil > now ? cues.shade : null);
+    }
+    $('flash').hidden = !(flashUntil > now);
   } else {
     renderer.setClearColor(0x0e1430);
     renderer.clear();
