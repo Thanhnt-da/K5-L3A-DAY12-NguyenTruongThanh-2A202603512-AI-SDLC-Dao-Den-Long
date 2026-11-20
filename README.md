@@ -33,6 +33,7 @@ All keys can be changed in **Cài đặt** (Settings): it warns when a key is al
 | E | Light / relight a lantern, or refuel a lit one |
 | F | Light pulse (costs 3 fireflies) |
 | Esc / P | Pause menu (continue, replay Night, settings, main menu) |
+| V | Ping: light beam on the lantern that needs you most |
 | Enter | Confirm on menus |
 
 **Accessibility (Cài đặt):** key remapping, colour-blind palette, reduced motion (no camera shake / screen flash), larger UI (×1.25). On-screen cues stand in for sounds: an arrow at the screen edge towards a Bóng Mực that just appeared, a strong-wind warning 2 s ahead, the last 10 s countdown, and a warning for lanterns under 30 fuel. UI text is at least 18 px at 1280×720.
@@ -69,7 +70,7 @@ Test Contract **v1.3**: [`game.contract.json`](game.contract.json). Headless exi
 
 **Soak notes:** Node runs without the JIT and with a small young generation (`--jitless --max-semi-space-size=1`). With the JIT, RSS rose ~45% over 10 Nights from one-time V8 warm-up while the heap in use stayed flat (no leak); with these flags RSS growth is ~4–6%. Details: [docs/notes/phase-4.md](docs/notes/phase-4.md).
 
-**My measurements** (dev laptop, Windows 10, i7-6600U, Intel HD 520): [bench.json](bench.json) avg **82.1 FPS**, 1%-low **32.6 FPS**, load **2.4 s**; [soak.json](soak.json) **0 crashes**, memory 38.2 → 39.7 MB.
+**My measurements** (dev laptop, Windows 10, i7-6600U, Intel HD 520): [bench.json](bench.json) avg **106.2 FPS**, 1%-low **32.1 FPS**, load **3.2 s** (the 1%-low varies a lot between runs on this laptop); [soak.json](soak.json) **0 crashes**, memory 38.2 → 39.7 MB.
 
 ## Tuning notes
 
@@ -77,7 +78,21 @@ All `tuning` values are the standard numbers from Ticket-02 and Ticket-03. `fall
 
 ## Sáng tạo của tôi
 
-_(My own creative additions, added in Phase 4. They are visual/audio only and switched off in the benchmark scene, so headless output and measurements are unchanged.)_
+My ideas after playing the game, each checked against the lab rule that extras must **not** change the rules, standard numbers, maps, Test Contract or headless output. All of them live in the browser client ([`src/client/decor.js`](src/client/decor.js)) and never touch `src/sim/`. All 62 tests and the headless scenarios are unchanged.
+
+| Idea | What I built | Evidence |
+|---|---|---|
+| Bóng Mực shouldn't be big purple balls blocking the view | A **small dark silhouette shaped like Mây** (body, conical hat, a fading wisp instead of feet) with two glowing eyes in the rim colour (`#7A3CFF`, or `#00B3FF` in colour-blind mode). They face Mây. Still drawn instanced (2 draw calls for any number of shades). The hit radius is still the standard 1 m | [screenshot](docs/creative/shade-silhouettes.jpg) |
+| A nicer lantern | An **original Hội An-style paper lantern** hanging from a curved wooden post, with gold caps and a red tassel. It glows warm orange when lit; tilted with torn paper when unlit (the colour-blind shape cue). The post stands exactly on the contract position | [after](docs/creative/lantern-ping-decor.jpg) · [before](docs/creative/before-old-lantern.jpg) |
+| The island looks bare | **Grass tufts, flowers and low bushes** on the islands, which look natural to walk through, and **trees and rocks on small islets in the cloud sea**, where nobody walks. Fixed per-Night layout, instanced | [screenshot](docs/creative/lantern-ping-decor.jpg) |
+| A button to find the lantern I need | **V = ping** (remappable): a light beam rises from the lantern that most needs you (nearest unlit or under 30 fuel), with its id, distance and fuel on screen for 3 s and a chime. The required off-screen arrow stays | [screenshot](docs/creative/lantern-ping-decor.jpg) (top: "📍 L2 · 25 m · chưa sáng") |
+
+**Ideas I dropped because they would break the rules:**
+- Shades losing interest after chasing: chase and lose distances (12/18 m) are standard rules checked by hidden tests.
+- Solid trees, rocks or lanterns: collision would change the standard maps and every headless movement result. Decoration is therefore placed so walking through it looks natural.
+- Copying the lantern from an existing game: not allowed by the lab rules (RULES §8). The lantern is my own design.
+
+**Performance check:** decoration is off in the benchmark scene, as the ticket asks. The new shade shape is part of the measured scene. Back-to-back 10 s runs: before 84–95 avg / 6–29 1%-low, after 101–106 avg / 31–32 1%-low, so no slowdown. Official 30 s run: [bench.json](bench.json).
 
 ## Project layout
 

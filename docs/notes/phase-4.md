@@ -7,7 +7,7 @@ Requirements: [phase-4-ticket.md](phase-4-ticket.md). No game rules changed. All
 | # | Criterion | Verified by | Status |
 |---|---|---|---|
 | R1 | `bench_cmd --seed 42 --duration 30 --out bench.json`: 1280×720 window, vsync off, Night 1 with 200 wandering shades + 100 fireflies, L1–L3 lit at 100, no spawn/damage/pickup/burn/end, orbit camera r 30 / Y 15 from (30,15,0) CCW, 15 s per lap, 3 s warm-up; fields as defined | `release.test.js` (scene, camera, frame stats) + [bench.json](../../bench.json) | đạt |
-| R2 | Bench thresholds avg ≥ 60, 1%-low ≥ 30, load ≤ 10 s | my laptop: 82.1 / 32.6 / 2.4 s | đạt on my machine (the grading machine decides) |
+| R2 | Bench thresholds avg ≥ 60, 1%-low ≥ 30, load ≤ 10 s | my laptop, final run: 106.2 / 32.1 / 3.2 s (earlier run 82.1 / 32.6 / 2.4 s) | đạt on my machine (the grading machine decides); 1%-low varies run to run here |
 | R3 | `soak_cmd --seed 7 --nights 10 --out soak.json`, 1→2→3 cycle, seed 7+i, random input (move every 30 ticks; 5/3/2/10% buttons); crashes 0 and mem_end ≤ 1.2 × mem_start | `release.test.js` soak + [soak.json](../../soak.json) | đạt (0 crashes, +4%) |
 | R4 | Leaderboard: name prompt after Bình Minh or any loss, 3–12 `[A-Za-z0-9_-]` (+ Vietnamese), fields name/score/nights_won/achieved_at (ISO 8601 + tz)/seed, top 10 by score, ties keep the earlier entry, saved on disk, menu screen, `--export-leaderboard` | `release.test.js` rules + export; browser check ([screen](../proof/phase-4/screens/leaderboard-after-loss.jpg)) | đạt |
 | R5 | Key remapping for all 9 actions, duplicate warning, restore defaults, saved | browser check ([screen](../proof/phase-4/screens/key-remap-duplicate-warning.jpg)) | đạt (by hand) |
@@ -30,6 +30,10 @@ Requirements: [phase-4-ticket.md](phase-4-ticket.md). No game rules changed. All
 | D5 | Bench shades | `world.bench` also stops wander → chase (the ticket says shades move by the wander rules) |
 | D6 | Leaderboard score | Sum of Nights won so far in this run; `seed` = the seed of the run's first Night |
 | D7 | Names | NFC-normalised; Vietnamese letters with diacritics accepted (bonus) |
+
+## Creative additions (Sáng tạo của tôi)
+
+My ideas after playing were judged against the rules (see README). Built: shade silhouettes with eyes, an original paper lantern, decoration (no collision; trees/rocks only on islets), V-ping. Dropped: shade "lose interest" (core rule), collision (changes maps/headless), copying a lantern from another game (RULES §8). A bug found while doing this: shade per-instance colours were ignored because shaders were pre-compiled before any shade existed (the old spheres were affected too). Fixed by creating the colour buffer up front.
 
 ## Evaluation
 

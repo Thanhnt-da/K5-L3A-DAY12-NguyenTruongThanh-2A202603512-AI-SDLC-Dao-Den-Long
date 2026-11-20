@@ -12,6 +12,7 @@
 - All 3D models are built from three.js primitive shapes in code. No external models or textures.
 - All sound and music are synthesised in code with the Web Audio API (`src/client/audio.js`). No audio files.
 - Ông Đăng's Night intro lines are written for this game.
+- Creative visuals (shade silhouettes, paper lantern, plants, trees, rocks, ping beam) are my own designs built from three.js primitives in `src/client/decor.js`. Nothing is copied from other games.
 
 ## AI tools
 - Claude Code (Anthropic, model Claude Opus 5.5): code, tests, docs, under my direction and review. See [docs/notes/ai-log.md](docs/notes/ai-log.md).
