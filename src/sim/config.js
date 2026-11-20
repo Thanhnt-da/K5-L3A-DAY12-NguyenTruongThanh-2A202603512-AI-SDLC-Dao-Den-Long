@@ -54,6 +54,14 @@ export const RULES = Object.freeze({
   charmTicks: 600,
   charmRespawnTicks: 2700,
   charmSpeed: 7.2,
+  // Phase 3 (Ticket-03)
+  relightScore: 40,
+  drainPulseScore: 15, // total for pulsing a shade that was draining
+  baseCapacity: 10,
+  capacityPerLight: 2,
+  drainReach: 2, // m: a shade this close to its weak lantern starts draining
+  drainBreakDist: 6, // m: Mây this close pulls a draining shade into chase
+  fuelDrainEventEvery: 60, // ticks
   // wind (Night 3)
   windEveryTicks: 1800,
   windGustTicks: 300,

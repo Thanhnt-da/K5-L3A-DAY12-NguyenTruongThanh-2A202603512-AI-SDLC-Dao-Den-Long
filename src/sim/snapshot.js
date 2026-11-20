@@ -1,5 +1,6 @@
 // Contract v1.1 output line builders. Coordinates and seconds rounded to 3 decimals.
 import { TICK_RATE } from './config.js';
+import { capacityOf } from './world.js';
 
 const r3 = (v) => {
   const x = Math.round(v * 1000) / 1000;
@@ -25,12 +26,13 @@ export function snapshotLine(w) {
       grounded: p.grounded,
       flames: p.flames,
       carried: p.carried,
+      capacity: capacityOf(p),
       invuln: p.invulnTicks > 0,
       dash_cd_s: sec(p.dashCdTicks),
       pulse_cd_s: sec(p.pulseCdTicks),
       charm_s: sec(p.charmTicks),
     },
-    lanterns: w.lanterns.map((l) => ({ id: l.id, pos: v3(l.pos), lit: l.lit, deposited: l.deposited })),
+    lanterns: w.lanterns.map((l) => ({ id: l.id, pos: v3(l.pos), lit: l.lit, deposited: l.deposited, fuel: l.lit ? Math.round((l.fuel / TICK_RATE) * 10) / 10 : 0, ever_lit: l.everLit, relit_count: l.relitCount })),
     shades: w.shades.map((s) => ({ id: s.id, pos: v3(s.pos), state: s.state })),
     motes_active: w.motes.length,
     motes: w.motes.map((m) => ({ id: m.id, pos: v3(m.pos), kind: m.kind, ttl_s: m.ttl === null ? null : sec(m.ttl) })),
