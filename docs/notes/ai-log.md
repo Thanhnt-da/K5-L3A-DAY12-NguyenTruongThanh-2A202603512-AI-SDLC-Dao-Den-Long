@@ -24,6 +24,7 @@ Read with the desktop app's usage tool (`get_usage`). Pro is a flat subscription
 | After tagging phase-3 | 51% | 72% | 476k tokens |
 | Start of Phase 4 (after reading Ticket-04) | 54% | 72% | 489k tokens |
 | Phase 4 build done (before docs/tag) | 68% | 74% | 570k tokens |
+| Creative additions + tag phase-4 (the 5-hour window had reset at 10:10 UTC) | 8% of the new window | 76% | 633k tokens |
 
 Setup + Phases 1–2 were not measured while they ran; together they used about 41% of one 5-hour window, plus some of the weekly share (the part already used before this lab can't be separated).
 
