@@ -3,13 +3,20 @@
 // Keyboard/mouse are turned into the same input shape the headless runner uses.
 import * as THREE from 'three';
 import { createWorld, step } from '../sim/world.js';
-import { WORLD, DT } from '../sim/config.js';
+import { DT } from '../sim/config.js';
+import { MAPS } from '../sim/maps.js';
+
+const ISLAND_R = MAPS[1].islands[0].r;
 
 // ---------- input ----------
 const keys = new Set();
-const pressedOnce = new Set();
+const pressedOnce = new Set(); // for Enter (replay), read once per frame
+const taps = new Set(); // keys pressed since the last sim step: a quick tap between frames still counts
 addEventListener('keydown', (e) => {
-  if (!keys.has(e.code)) pressedOnce.add(e.code);
+  if (!keys.has(e.code)) {
+    pressedOnce.add(e.code);
+    taps.add(e.code);
+  }
   keys.add(e.code);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
@@ -22,18 +29,23 @@ addEventListener('pointermove', (e) => {
 });
 
 const held = (...codes) => codes.some((c) => keys.has(c));
-let prevButtons = { jump: false, interact: false, pulse: false, dash: false };
+let prevButtons = { jump: false, interact: false, pulse: false, dash: false, pause: false };
 
 function readInput() {
-  if (held('KeyQ')) camYawDeg += 120 * DT;
-  if (held('KeyE')) camYawDeg -= 120 * DT;
+  if (held('ArrowLeft', 'KeyQ')) camYawDeg += 120 * DT;
+  if (held('ArrowRight', 'KeyR')) camYawDeg -= 120 * DT;
   // Contract: at yaw 0, move z=+1 is +Z and x=+1 is +X. The camera looks along
   // +Z, so +X is screen-left; "right" keys therefore send x = -1.
-  const x = (held('KeyA', 'ArrowLeft') ? 1 : 0) - (held('KeyD', 'ArrowRight') ? 1 : 0);
+  const x = (held('KeyA') ? 1 : 0) - (held('KeyD') ? 1 : 0);
   const z = (held('KeyW', 'ArrowUp') ? 1 : 0) - (held('KeyS', 'ArrowDown') ? 1 : 0);
-  const cur = { jump: held('Space'), interact: held('KeyF'), pulse: held('KeyR'), dash: held('ShiftLeft') };
+  const BUTTON_KEYS = { jump: ['Space'], interact: ['KeyE'], pulse: ['KeyF'], dash: ['ShiftLeft', 'ShiftRight'], pause: ['Escape', 'KeyP'] };
+  const cur = {};
   const pressed = {};
-  for (const b in cur) pressed[b] = cur[b] && !prevButtons[b];
+  for (const [b, codes] of Object.entries(BUTTON_KEYS)) {
+    cur[b] = held(...codes);
+    pressed[b] = (cur[b] && !prevButtons[b]) || codes.some((c) => taps.has(c) && !keys.has(c));
+  }
+  taps.clear();
   prevButtons = cur;
   return { move: [x, z], camYawDeg, pressed };
 }
@@ -52,7 +64,7 @@ moon.position.set(-20, 40, -10);
 scene.add(moon);
 
 const island = new THREE.Mesh(
-  new THREE.CylinderGeometry(WORLD.islandRadius, WORLD.islandRadius * 0.8, 4, 48),
+  new THREE.CylinderGeometry(ISLAND_R, ISLAND_R * 0.8, 4, 48),
   new THREE.MeshStandardMaterial({ color: 0x3b5a3a, roughness: 1 }),
 );
 island.position.y = -2;
@@ -130,8 +142,10 @@ function render(w, alphaTime) {
 const hud = document.getElementById('hud');
 function updateHud(w) {
   const lit = w.lanterns.filter((l) => l.lit).length;
-  const end = w.state === 'won' ? '\nYOU WIN · Enter to replay' : w.state === 'lost' ? '\nGAME OVER · Enter to replay' : '';
-  hud.textContent = `Time ${w.timeLeft.toFixed(0)}s   Score ${w.score}\nFlames ${w.player.flames}   Carried ${w.player.carried}\nLanterns ${lit}/${w.lanterns.length}${end}`;
+  const end = w.state === 'won' ? '\nYOU WIN · Enter to replay' : w.state === 'lost' ? '\nGAME OVER · Enter to replay' : w.paused ? '\nPAUSED · Esc/P to continue' : '';
+  const p = w.player;
+  const pulse = p.pulseCdTicks ? `${(p.pulseCdTicks / 60).toFixed(1)}s` : 'ready';
+  hud.textContent = `Time ${w.timeLeft.toFixed(0)}s   Score ${w.score}\nFlames ${p.flames}   Carried ${p.carried}/10\nLanterns ${lit}/${w.lanterns.length}   Pulse ${pulse}${end}`;
 }
 
 function resize() {
