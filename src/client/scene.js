@@ -1,6 +1,7 @@
 // Three.js scene for one Night, built from the same terrain shapes the sim uses.
 // Colours follow the Ticket-02 standard palette.
 import * as THREE from 'three';
+import { shadeGeometry, shadeEyesGeometry, makePaperLantern, buildDecor, makePingBeam } from './decor.js';
 
 export const PAL = {
   sky: 0x0e1430,
@@ -25,6 +26,7 @@ export const PAL = {
 };
 
 // Lambert is much cheaper than Standard with many point lights (one per lantern)
+const s0Stun = (c) => c;
 const std = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, ...extra });
 
 function terrainMesh(sh) {
@@ -90,29 +92,18 @@ function makeMay() {
 }
 
 function makeLantern() {
-  const g = new THREE.Group();
-  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 3, 12), std(PAL.wood));
-  pillar.position.y = 1.5;
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), std(PAL.unlit, { emissive: 0x000000 }));
-  lamp.position.y = 3.4;
-  const light = new THREE.PointLight(PAL.lit, 0, 16);
-  light.position.y = 3.4;
+  // Sáng tạo: original hanging paper lantern on a curved post (src/client/decor.js)
+  const { group: g, lamp, light, head, torn } = makePaperLantern(PAL);
   const zone = new THREE.Mesh(new THREE.RingGeometry(5.8, 6, 48), new THREE.MeshBasicMaterial({ color: PAL.lit, transparent: true, opacity: 0, side: THREE.DoubleSide }));
   // fuel bar above the lamp (Ticket-03): back plate + fill scaled by fuel / 100
   const barBack = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.18), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 }));
   const bar = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.14), new THREE.MeshBasicMaterial({ color: PAL.lit }));
-  barBack.position.y = bar.position.y = 4.4;
-  bar.position.z = 0.01;
-  // torn paper strips, shown on unlit lanterns so lit/unlit differ without colour
-  const torn = new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.5, 5, 1, true), std(PAL.unlit, { side: THREE.DoubleSide }));
-  torn.position.y = 3.0;
-  torn.rotation.x = Math.PI;
+  barBack.position.set(1.2, 5.1, 0);
+  bar.position.set(1.2, 5.1, 0.01);
   zone.rotation.x = -Math.PI / 2;
   zone.position.y = 0.05;
-  const head = new THREE.Group();
-  head.add(lamp, light, torn);
-  g.add(pillar, head, zone, barBack, bar);
-  g.userData = { lamp, light, zone, bar, barBack, head, torn };
+  g.add(zone, barBack, bar);
+  g.userData = { lamp, light, zone, bar, barBack, head, torn, barX: 1.2 };
   return g;
 }
 
@@ -127,7 +118,7 @@ function makeCharm() {
 }
 
 export class NightScene {
-  constructor(renderer, map) {
+  constructor(renderer, map, { decor = true } = {}) {
     this.renderer = renderer;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(PAL.sky);
@@ -149,20 +140,30 @@ export class NightScene {
     }
     this.may = makeMay();
     this.scene.add(this.may);
+    if (decor) buildDecor(this.scene, map, PAL); // off in the benchmark scene
+    this.pingBeam = makePingBeam(PAL);
+    this.scene.add(this.pingBeam);
+    this.pingUntil = 0;
     this.maps = { lanterns: new Map(), drifters: new Map(), charms: new Map() };
     // Fireflies and Bóng Mực are drawn as InstancedMesh: one draw call each, however many
     // there are (Ticket-04 benchmark: 100 fireflies + 200 shades). Capacity grows as needed.
     this.inst = {
       moteCore: this.makeInstanced(new THREE.SphereGeometry(0.15, 8, 6), new THREE.MeshBasicMaterial({ color: PAL.moteCore }), 64),
       moteHalo: this.makeInstanced(new THREE.SphereGeometry(0.3, 8, 6), new THREE.MeshBasicMaterial({ color: PAL.moteHalo, transparent: true, opacity: 0.35, depthWrite: false }), 64),
-      shade: this.makeInstanced(new THREE.SphereGeometry(0.8, 14, 10), std(0xffffff, { emissive: PAL.shadeRim, emissiveIntensity: 0.3 }), 32),
+      // Sáng tạo: Bóng Mực drawn as a small dark Mây-like silhouette with glowing eyes
+      // faint rim glow only: the body stays ink (#120A1A); the eyes carry the rim colour (#7A3CFF)
+      shade: this.makeInstanced(shadeGeometry(), std(0xffffff, { emissive: PAL.shadeRim, emissiveIntensity: 0.035 }), 32, true),
+      shadeEyes: this.makeInstanced(shadeEyesGeometry(), new THREE.MeshBasicMaterial({ color: PAL.shadeRim }), 32),
     };
     this.tmp = new THREE.Object3D();
     this.tmpColor = new THREE.Color();
   }
 
-  makeInstanced(geo, mat, cap) {
+  makeInstanced(geo, mat, cap, colored = false) {
     const m = new THREE.InstancedMesh(geo, mat, cap);
+    // Create the per-instance colour buffer now: shaders are pre-compiled (warm()) before any
+    // shade exists, and a program built without instance colours would ignore them later.
+    if (colored) m.setColorAt(0, new THREE.Color(PAL.shade));
     m.count = 0;
     m.frustumCulled = false;
     this.scene.add(m);
@@ -174,7 +175,7 @@ export class NightScene {
     const m = this.inst[key];
     if (n <= m.instanceMatrix.count) return m;
     this.scene.remove(m);
-    const bigger = this.makeInstanced(m.geometry, m.material, Math.max(n, m.instanceMatrix.count * 2));
+    const bigger = this.makeInstanced(m.geometry, m.material, Math.max(n, m.instanceMatrix.count * 2), !!m.instanceColor);
     this.inst[key] = bigger;
     return bigger;
   }
@@ -220,7 +221,7 @@ export class NightScene {
       u.zone.material.opacity = l.lit && !low ? 0.35 : 0; // fuel < 30: no safe zone
       u.bar.visible = u.barBack.visible = l.lit && !blinkOff;
       u.bar.scale.x = Math.max(0.001, fuel / 100);
-      u.bar.position.x = -0.8 * (1 - fuel / 100);
+      u.bar.position.x = u.barX - 0.8 * (1 - fuel / 100);
       u.bar.material.color.setHex(low ? (colorBlind ? 0xffffff : 0xff5a5f) : PAL.lit);
       u.bar.quaternion.copy(this.camera.quaternion);
       u.barBack.quaternion.copy(this.camera.quaternion);
@@ -241,17 +242,23 @@ export class NightScene {
     core.instanceMatrix.needsUpdate = halo.instanceMatrix.needsUpdate = true;
 
     const sh = this.ensure('shade', w.shades.length);
-    sh.material.emissive.setHex(colorBlind ? PAL.shadeRimCB : PAL.shadeRim);
+    const eyes = this.ensure('shadeEyes', w.shades.length);
+    const rim = colorBlind ? PAL.shadeRimCB : PAL.shadeRim;
+    sh.material.emissive.setHex(rim);
+    eyes.material.color.setHex(s0Stun(rim));
     w.shades.forEach((s, i) => {
-      o.position.set(...s.pos);
+      o.position.set(s.pos[0], s.pos[1] + 0.05 * Math.sin(t * 2 + i), s.pos[2]);
+      o.rotation.set(0, Math.atan2(p.pos[0] - s.pos[0], p.pos[2] - s.pos[2]), 0); // face Mây
       o.scale.setScalar(s.state === 'spawning' ? 0.5 : 1);
       o.updateMatrix();
       sh.setMatrixAt(i, o.matrix);
+      eyes.setMatrixAt(i, o.matrix);
       // stunned = grey-violet; draining = lighter so it stands out; otherwise ink black
       sh.setColorAt(i, this.tmpColor.setHex(s.state === 'stunned' ? PAL.shadeStunned : s.state === 'drain' ? 0x3a1a5a : PAL.shade));
     });
-    sh.count = w.shades.length;
-    sh.instanceMatrix.needsUpdate = true;
+    sh.count = eyes.count = w.shades.length;
+    sh.instanceMatrix.needsUpdate = eyes.instanceMatrix.needsUpdate = true;
+    o.rotation.set(0, 0, 0);
     if (sh.instanceColor) sh.instanceColor.needsUpdate = true;
     this.sync(this.maps.drifters, w.drifters, makeDrifter);
     for (const d of w.drifters) {
@@ -266,6 +273,11 @@ export class NightScene {
       m.rotation.y = t;
       m.visible = c.available;
     }
+
+    // ping beam over the lantern that needs Mây (Sáng tạo, V key)
+    const pingLeft = this.pingUntil - t;
+    this.pingBeam.visible = pingLeft > 0;
+    if (pingLeft > 0) this.pingBeam.material.opacity = 0.35 * Math.min(1, pingLeft) * (0.75 + 0.25 * Math.sin(t * 8));
 
     const lit = w.lanterns.filter((l) => l.lit).length;
     this.ambient.intensity = 0.15 + 0.55 * (lit / w.lanterns.length); // Ticket-02 Part 3.8
@@ -292,6 +304,11 @@ export class NightScene {
     const v = new THREE.Vector3(pos[0], pos[1] + 3, pos[2]).project(this.camera);
     if (v.z > 1) return null;
     return { x: (v.x + 1) / 2, y: (1 - v.y) / 2 };
+  }
+
+  ping(pos, t, seconds = 3) {
+    this.pingBeam.position.set(pos[0] + 1.2, pos[1] + 15, pos[2]);
+    this.pingUntil = t + seconds;
   }
 
   /** Compile every shader now, so nothing stalls the first time it comes into view. */

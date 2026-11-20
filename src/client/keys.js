@@ -10,6 +10,7 @@ export const ACTIONS = [
   ['interact', 'Tương tác / nạp đèn'],
   ['pulse', 'Tỏa Sáng'],
   ['pause', 'Tạm dừng'],
+  ['ping', 'Gọi đèn (ping)'],
 ];
 
 export const DEFAULT_KEYS = {
@@ -22,6 +23,7 @@ export const DEFAULT_KEYS = {
   interact: ['KeyE'],
   pulse: ['KeyF'],
   pause: ['Escape', 'KeyP'],
+  ping: ['KeyV'],
 };
 
 const ARROWS = { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' };

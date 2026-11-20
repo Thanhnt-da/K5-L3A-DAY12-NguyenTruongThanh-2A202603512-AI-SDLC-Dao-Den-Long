@@ -12,7 +12,7 @@ export function runBench(renderer, params) {
   const seed = Number(params.get('seed') ?? 42);
   const duration = Number(params.get('duration') ?? 30);
   const world = createBenchWorld(seed);
-  const scene = new NightScene(renderer, world.map);
+  const scene = new NightScene(renderer, world.map, { decor: false }); // creative decoration off in the bench
   scene.cameraOverride = benchCamera;
   renderer.setSize(innerWidth, innerHeight);
   scene.resize(innerWidth, innerHeight);

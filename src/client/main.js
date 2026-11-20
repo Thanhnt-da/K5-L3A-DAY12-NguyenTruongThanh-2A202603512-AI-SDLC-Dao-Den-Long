@@ -196,7 +196,24 @@ function toMenu() {
   showScreen('menu');
 }
 
+const pingInfo = { text: '', until: 0 };
+/** Sáng tạo: ping the lantern that most needs Mây (nearest unlit or under 30 fuel; else the nearest). */
+function pingLantern() {
+  if (screen !== 'play' || !world || world.paused) return;
+  const p = world.player.pos;
+  const d = (l) => Math.hypot(l.pos[0] - p[0], l.pos[2] - p[2]);
+  const needy = world.lanterns.filter((l) => !l.lit || l.fuel < 30 * 60);
+  const pool = needy.length ? needy : world.lanterns;
+  const l = pool.reduce((a, b) => (d(b) < d(a) ? b : a));
+  const t = performance.now() / 1000;
+  scene.ping(l.pos, t);
+  pingInfo.text = `📍 ${l.id} · ${Math.round(d(l))} m · ${l.lit ? `dầu ${Math.floor(l.fuel / 60)}` : 'chưa sáng'}`;
+  pingInfo.until = t + 3;
+  sound.tone(660, 0.25, 'sine', 0.15, 220);
+}
+
 function onKeyPress(code) {
+  if (settings.keys.ping.includes(code)) return pingLantern();
   if (code !== 'Enter') return;
   if (screen === 'menu') $('menu-start').click();
   else if (screen === 'intro') play();
@@ -360,7 +377,7 @@ function frame(now) {
     scene.render(world, camYawDeg, now / 1000, settings.colorBlind);
     if (screen === 'play') {
       hud.update(world, scene, now / 1000, totalScore, settings.colorBlind);
-      hud.cues(world, scene, cues.shadeUntil > now ? cues.shade : null);
+      hud.cues(world, scene, cues.shadeUntil > now ? cues.shade : null, pingInfo.until > now / 1000 ? pingInfo.text : '');
     }
     $('flash').hidden = !(flashUntil > now);
   } else {

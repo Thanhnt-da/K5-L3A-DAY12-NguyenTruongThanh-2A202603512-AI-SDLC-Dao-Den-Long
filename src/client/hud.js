@@ -26,8 +26,9 @@ export class Hud {
   }
 
   /** Visual stand-ins for sounds (Ticket-04 Part 4). */
-  cues(w, scene, shadeId) {
+  cues(w, scene, shadeId, ping = '') {
     const lines = [];
+    if (ping) lines.push(ping);
     // strong wind: warning 2 s (120 ticks) before each gust
     if (w.windEnabled && !w.wind.active && 1800 - (w.simTick % 1800) <= 120) lines.push('🍃 ⚠ Gió mạnh sắp tới!');
     if (w.wind.active) lines.push('🍃 Gió mạnh');
