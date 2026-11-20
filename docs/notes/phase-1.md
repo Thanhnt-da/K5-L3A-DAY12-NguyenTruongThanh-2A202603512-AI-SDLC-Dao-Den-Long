@@ -47,10 +47,12 @@
 | A10 | Shade spawning | _to decide: how many, where, when (`shade_spawned`)_ | |
 | A11 | End-of-night score bonus | _to decide: only on a win?_ | |
 
-## Evaluation (fill in at the end of the phase)
+## Evaluation (written when tagging `phase-1`)
 
-- Met / not met:
-- Broke anything earlier: n/a (first phase)
-- What AI got wrong and how I caught it:
-- Harness changes:
-- Tokens / cost estimate:
+- **Met:** C1–C8. That covers contract file, headless CLI, input/scenario validation (exit 2), output format, tick model, camera-relative movement, jump, determinism and the dawn loss. 11 tests pass and CI runs them on push. The browser shows the island, Mây, lanterns, fireflies and the HUD.
+- **Not met (chưa đạt):** C9–C17, the gameplay rules: picking up fireflies, depositing, lighting lanterns, Bóng Mực, pulse, hits, score, winning, and the win/lose/replay screens. **Reason:** the hour went on environment setup (installing Node.js) and the contract skeleton. Phase 2 was released before the rules were built.
+- **What happens next:** Ticket-02 replaces the Phase 1 numbers with standard numbers and the hidden Phase 1 tests are re-run with them. So the Phase 1 rules are built in Phase 2 directly against the standard numbers instead of my draft `tuning` values. This tag's `tuning` values are drafts and only `player_speed`, `flames` and `night1_duration_s` are used by the code at this tag.
+- **Broke anything earlier:** n/a (first phase).
+- **What AI got wrong and how I caught it:** the test helper built the CLI path from a URL, which kept `%20` for the space in the folder name. Tests failed, and it was fixed with `fileURLToPath`. The lab board's later phases load only when signed in, so the first summary showed only Phase 1.
+- **Harness changes:** CLAUDE.md, the `verify-phase` skill, and a Stop hook that blocks finishing while tests are red.
+- **Tokens / cost estimate:** see [ai-log.md](ai-log.md).
