@@ -1,0 +1,1 @@
+node src/headless/cli.js --seed 1 --night 2 --ticks 120 --snapshot-every 10 --scenario tests\scenarios\n2-jump-pad\scenario.json --inputs tests\scenarios\n2-jump-pad\inputs.json --out out.jsonl

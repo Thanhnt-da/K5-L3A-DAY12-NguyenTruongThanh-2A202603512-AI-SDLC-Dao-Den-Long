@@ -1,0 +1,1 @@
+node src/headless/cli.js --seed 1 --night 1 --ticks 60 --snapshot-every 1 --scenario tests\scenarios\last-lantern-win\scenario.json --inputs tests\scenarios\last-lantern-win\inputs.json --out out.jsonl

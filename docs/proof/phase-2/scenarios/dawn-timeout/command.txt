@@ -1,0 +1,1 @@
+node src/headless/cli.js --seed 5 --night 1 --ticks 1000 --snapshot-every 60 --scenario tests\scenarios\dawn-timeout\scenario.json --out out.jsonl

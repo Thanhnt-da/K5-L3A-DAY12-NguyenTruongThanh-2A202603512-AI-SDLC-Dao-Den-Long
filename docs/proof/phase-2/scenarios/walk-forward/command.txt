@@ -1,0 +1,1 @@
+node src/headless/cli.js --seed 1 --night 1 --ticks 120 --snapshot-every 30 --scenario tests\scenarios\walk-forward\scenario.json --inputs tests\scenarios\walk-forward\inputs.json --out out.jsonl
