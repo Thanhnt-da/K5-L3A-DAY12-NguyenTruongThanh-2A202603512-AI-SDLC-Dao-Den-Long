@@ -9,6 +9,12 @@
 - Play: `npm run dev` (dev server) or `npm start` (serves the built `dist/`)
 - Evidence for phase N: `node scripts/evidence.mjs N` (see skill `verify-phase`)
 
+## Current scope (Phase 2, Contract v1.1)
+- Spec: `docs/notes/phase-2-ticket.md` (Ticket-02 copy), acceptance criteria + assumptions: `docs/notes/phase-2.md`.
+- All numbers are the Ticket-02 **standard numbers**: never invent or "tune" them. Contract keys live in `game.contract.json`; the rest in `RULES` (`src/sim/config.js`); maps in `src/sim/maps.js`.
+- `step()` in `src/sim/world.js` follows the ticket's mandatory 12-step tick order; keep new logic in the right numbered step.
+- Shade states must be exactly `spawning`, `wander`, `chase`, `recoil`, `stunned`.
+
 ## Layout
 - `src/sim/`: pure deterministic simulation. Shared by browser and headless.
 - `src/headless/cli.js`: Test Contract CLI (exit 2 = malformed inputs/scenario).
@@ -25,4 +31,6 @@
 - Never write tests that always pass or edit outputs by hand. Unmet requirement → write "chưa đạt" + reason.
 - When a new ticket replaces a rule: update or remove the old test with a one-line reason in the phase notes; never skip silently.
 - Do not delete harness files (`CLAUDE.md`, `.claude/`, `scripts/`). Do not commit `.env` or keys.
-- Small commits, one change each. A Stop hook runs `npm test` and blocks finishing while tests are red.
+- Small commits, one change each. A Stop hook runs `npm test` and `vite build` and blocks finishing while either is red.
+- A test that checks a "full run" must assert the run really went to the end (check the `end` line), not just that it was fast.
+- After touching `src/client/`, also check the game in a browser: tests only cover `src/sim/`.

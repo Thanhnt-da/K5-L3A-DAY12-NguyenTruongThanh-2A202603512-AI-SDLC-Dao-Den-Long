@@ -4,7 +4,7 @@
 
 Mây, a young lantern keeper, collects fireflies to relight the Big Lanterns of a cloud-sea island while dodging the Bóng Mực in the black fog. 3D third-person, runs in the browser (Three.js); game logic is a pure deterministic simulation that also runs headless (Node) for the Test Contract.
 
-> Status: **Phase 1 in progress.** Project skeleton, headless runner and contract I/O are done; gameplay rules are being built. See [docs/proof/](docs/proof/) for what is verified.
+> Status: **Phase 2 in progress.** Night 1 plays fully with the Ticket-02 standard numbers (Contract v1.1). Nights 2–3, Gió Lạc, Bùa Gió pickups, menus and sound are next. What is verified: [docs/notes/phase-2.md](docs/notes/phase-2.md), [docs/proof/](docs/proof/).
 
 ## Install and run (macOS / Linux, Node.js 20+)
 
@@ -20,33 +20,41 @@ npm start          # then open http://localhost:4173
 
 | Key | Action |
 |---|---|
-| W A S D / arrow keys | Move (relative to camera) |
-| Mouse drag, Q / E | Rotate camera |
+| W / S, A / D (↑ / ↓) | Move (relative to camera) |
+| Mouse drag, Q / R, ← / → | Rotate camera |
 | Space | Jump |
-| F | Interact (deposit fireflies into a lantern) |
-| R | Light pulse |
+| Shift | Dash |
+| E | Deposit fireflies into the nearest unlit lantern |
+| F | Light pulse (costs 3 fireflies) |
+| Esc / P | Pause / continue |
 | Enter | Replay after win / loss |
 
 ## Scoring
 
-_(Filled in with the Phase 1 rules; the values are declared in `game.contract.json` → `tuning.score`.)_
+Ticket-02 standard scoring (`game.contract.json` → `tuning.score`):
+
+- +10 per firefly **deposited** into a lantern (picking up gives nothing yet)
+- +100 per lantern lit
+- +5 per Bóng Mực hit by a light pulse (each one, each time)
+- On a win: + `floor(seconds left) × 2` + 50 × flames left
 
 ## Tests and headless mode
 
 ```bash
-npm test                                   # unit + contract + determinism tests
-node scripts/evidence.mjs 1                # save Phase 1 evidence to docs/proof/phase-1/
+npm test                                   # unit + contract + rules + determinism tests
+node scripts/evidence.mjs 2                # save Phase 2 evidence to docs/proof/phase-2/
 node src/headless/cli.js --seed 1 --night 1 --ticks 600 --out out.jsonl \
   [--scenario tests/scenarios/walk-forward/scenario.json] \
   [--inputs tests/scenarios/walk-forward/inputs.json] [--snapshot-every 10]
 ```
 
-Test Contract v1.0 declaration: [`game.contract.json`](game.contract.json). Exit codes: `0` ok, `2` malformed inputs/scenario, `1` other errors.
+Test Contract v1.1 declaration: [`game.contract.json`](game.contract.json). Exit codes: `0` ok, `2` malformed inputs/scenario, `1` other errors.
 
 ### Tuning notes (values that are `null` / `false` or need explanation)
 
-- `fall_enabled: false`: the island edge is a wall; Mây cannot fall off.
-- World layout outside the contract: island radius 30 m, lanterns L1–L5 evenly on a 22 m ring (L1 at +Z), 30 random fireflies. See `src/sim/config.js`.
+- All `tuning` values are the Ticket-02 standard numbers. `fall_enabled: true`: below Y = −10 Mây loses a flame and all carried fireflies, then respawns at the start.
+- Standard numbers without a contract key (jump 7 m/s, gravity 20, detect 12 m / lose 18 m, spawn schedules…) are in `RULES` in [`src/sim/config.js`](src/sim/config.js); maps are in [`src/sim/maps.js`](src/sim/maps.js).
+- My own assumptions where the ticket is silent are listed in [docs/notes/phase-2.md](docs/notes/phase-2.md) (B1–B10).
 
 ## Project layout
 
