@@ -1,35 +1,55 @@
-// Browser client: renders the pure simulation with Three.js.
-// The sim runs at a fixed 60 Hz (accumulator); rendering only reads world state.
-// Keyboard/mouse are turned into the same input shape the headless runner uses.
+// Browser client: screens (menu → Night intro → play → result → next Night →
+// Bình Minh), pause menu, settings, sound, HUD. The sim runs at a fixed 60 Hz
+// (accumulator); rendering only reads world state. Keyboard and mouse become
+// the same input shape the headless runner uses.
 import * as THREE from 'three';
 import { createWorld, step } from '../sim/world.js';
 import { DT } from '../sim/config.js';
 import { MAPS } from '../sim/maps.js';
+import { NightScene } from './scene.js';
+import { Hud } from './hud.js';
+import { Sound } from './audio.js';
+import { loadSettings, saveSettings } from './settings.js';
 
-const ISLAND_R = MAPS[1].islands[0].r;
+const $ = (id) => document.getElementById(id);
+
+// ---------- intro text (original lines for this game) ----------
+const INTRO = {
+  1: 'Ông Đăng: "Sương đen nuốt mất ánh sáng Bến rồi, cháu ạ. Gom đom đóm, thắp lại năm ngọn đèn lớn trước khi trời sáng."',
+  2: 'Ông Đăng: "Đảo Cau có hai hòn, nối bằng cầu tre. Bục nhảy sẽ đưa cháu qua sông mây. Coi chừng Gió Lạc, nó thích ánh sáng lắm."',
+  3: 'Ông Đăng: "Đảo Chuông cao ba tầng. Gió mạnh từng cơn. Thắp bảy ngọn đèn và tiếng chuông sẽ gọi bình minh về."',
+};
 
 // ---------- input ----------
 const keys = new Set();
-const pressedOnce = new Set(); // for Enter (replay), read once per frame
-const taps = new Set(); // keys pressed since the last sim step: a quick tap between frames still counts
+const taps = new Set(); // pressed since the last sim step: a quick tap between frames still counts
 addEventListener('keydown', (e) => {
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   if (!keys.has(e.code)) {
-    pressedOnce.add(e.code);
     taps.add(e.code);
+    onKeyPress(e.code);
   }
   keys.add(e.code);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+
+const settings = loadSettings();
 let camYawDeg = 0;
 let dragging = false;
-addEventListener('pointerdown', () => (dragging = true));
+addEventListener('pointerdown', (e) => {
+  if (e.target === renderer.domElement) dragging = true;
+  sound.unlock();
+});
 addEventListener('pointerup', () => (dragging = false));
 addEventListener('pointermove', (e) => {
-  if (dragging) camYawDeg -= e.movementX * 0.3;
+  if (dragging) camYawDeg -= e.movementX * settings.sensitivity;
 });
 
 const held = (...codes) => codes.some((c) => keys.has(c));
-let prevButtons = { jump: false, interact: false, pulse: false, dash: false, pause: false };
+const BUTTON_KEYS = { jump: ['Space'], interact: ['KeyE'], pulse: ['KeyF'], dash: ['ShiftLeft', 'ShiftRight'], pause: ['Escape', 'KeyP'] };
+let prevButtons = {};
+let injectPause = false;
 
 function readInput() {
   if (held('ArrowLeft', 'KeyQ')) camYawDeg += 120 * DT;
@@ -38,139 +58,188 @@ function readInput() {
   // +Z, so +X is screen-left; "right" keys therefore send x = -1.
   const x = (held('KeyA') ? 1 : 0) - (held('KeyD') ? 1 : 0);
   const z = (held('KeyW', 'ArrowUp') ? 1 : 0) - (held('KeyS', 'ArrowDown') ? 1 : 0);
-  const BUTTON_KEYS = { jump: ['Space'], interact: ['KeyE'], pulse: ['KeyF'], dash: ['ShiftLeft', 'ShiftRight'], pause: ['Escape', 'KeyP'] };
   const cur = {};
   const pressed = {};
   for (const [b, codes] of Object.entries(BUTTON_KEYS)) {
     cur[b] = held(...codes);
     pressed[b] = (cur[b] && !prevButtons[b]) || codes.some((c) => taps.has(c) && !keys.has(c));
   }
+  if (injectPause) pressed.pause = true;
+  injectPause = false;
   taps.clear();
   prevButtons = cur;
   return { move: [x, z], camYawDeg, pressed };
 }
 
-// ---------- scene ----------
+// ---------- app state ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-document.body.appendChild(renderer.domElement);
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b0716);
-scene.fog = new THREE.Fog(0x1a0f2e, 25, 70);
-const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
-scene.add(new THREE.HemisphereLight(0x6a5acd, 0x1a0f2e, 0.6));
-const moon = new THREE.DirectionalLight(0xbfb8ff, 0.5);
-moon.position.set(-20, 40, -10);
-scene.add(moon);
+renderer.setPixelRatio(1); // performance: Ticket-02 needs >= 30 FPS at 1280x720 on modest laptops
+document.body.prepend(renderer.domElement);
+const hud = new Hud();
+const sound = new Sound();
+sound.setVolume(settings.volume);
 
-const island = new THREE.Mesh(
-  new THREE.CylinderGeometry(ISLAND_R, ISLAND_R * 0.8, 4, 48),
-  new THREE.MeshStandardMaterial({ color: 0x3b5a3a, roughness: 1 }),
-);
-island.position.y = -2;
-scene.add(island);
+let screen = 'menu'; // menu | intro | play | result | dawn
+let night = 1;
+let totalScore = 0; // sum of the Nights won so far
+let world = null;
+let scene = null;
+let acc = 0;
+let lastCountdown = null;
 
-// Mây: body + conical hat + small lantern
-const mayGroup = new THREE.Group();
-const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.8, 4, 12), new THREE.MeshStandardMaterial({ color: 0x4a6fa5 }));
-body.position.y = 0.75;
-const hat = new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.5, 20), new THREE.MeshStandardMaterial({ color: 0xd9b26f }));
-hat.position.y = 1.6;
-const handLamp = new THREE.PointLight(0xffa040, 4, 8);
-handLamp.position.set(0.5, 1, 0.3);
-mayGroup.add(body, hat, handLamp);
-scene.add(mayGroup);
+function showScreen(id) {
+  for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id;
+}
 
-const lanternMeshes = new Map();
-const moteMeshes = new Map();
-const shadeMeshes = new Map();
-const moteGeo = new THREE.SphereGeometry(0.15, 8, 8);
-const moteMat = new THREE.MeshBasicMaterial({ color: 0xfff1a0 });
+function startNight(n) {
+  night = n;
+  scene?.dispose();
+  world = createWorld({ seed: (Date.now() >>> 0) ^ (n * 7919), night: n });
+  scene = new NightScene(renderer, world.map);
+  scene.resize(innerWidth, innerHeight);
+  camYawDeg = 0;
+  acc = 0;
+  lastCountdown = null;
+  screen = 'intro';
+  $('intro-title').textContent = `Đêm ${n} – ${MAPS[n].name}`;
+  $('intro-text').textContent = INTRO[n];
+  showScreen('intro');
+  hud.show(false);
+}
 
-function syncMap(map, list, make) {
-  const seen = new Set();
-  for (const e of list) {
-    seen.add(e.id);
-    if (!map.has(e.id)) {
-      const m = make(e);
-      map.set(e.id, m);
-      scene.add(m);
+function play() {
+  sound.unlock();
+  sound.startMusic();
+  screen = 'play';
+  showScreen(null);
+  hud.show(true);
+}
+
+function endNight() {
+  const won = world.state === 'won';
+  if (won) totalScore += world.score;
+  if (won && night === 3) {
+    screen = 'dawn';
+    $('dawn-score').textContent = String(totalScore);
+    showScreen('dawn');
+  } else {
+    screen = 'result';
+    $('result-title').textContent = won ? `Đêm ${night} – thắp sáng!` : `Đêm ${night} – thất bại`;
+    $('result-text').textContent = won ? `Điểm đêm này: ${world.score} · Tổng: ${totalScore}` : 'Sương đen vẫn còn đó. Thử lại nhé.';
+    $('result-next').textContent = won ? 'Đêm kế tiếp' : 'Chơi lại Đêm';
+    showScreen('result');
+  }
+  hud.show(false);
+  sound.stopMusic();
+}
+
+function toMenu() {
+  screen = 'menu';
+  totalScore = 0;
+  sound.stopMusic();
+  hud.show(false);
+  showScreen('menu');
+}
+
+function onKeyPress(code) {
+  if (code !== 'Enter') return;
+  if (screen === 'menu') startNight(firstNight);
+  else if (screen === 'intro') play();
+  else if (screen === 'result') $('result-next').click();
+  else if (screen === 'dawn') toMenu();
+}
+
+// buttons
+// ?night=2 or ?night=3 starts from that Night (for testing and the demo video)
+const firstNight = [1, 2, 3].includes(Number(new URLSearchParams(location.search).get('night'))) ? Number(new URLSearchParams(location.search).get('night')) : 1;
+$('menu-start').onclick = () => {
+  sound.unlock();
+  totalScore = 0;
+  startNight(firstNight);
+};
+$('menu-settings').onclick = () => openSettings('menu');
+$('intro-go').onclick = play;
+$('result-next').onclick = () => (world.state === 'won' ? startNight(night + 1) : startNight(night));
+$('result-menu').onclick = toMenu;
+$('dawn-menu').onclick = toMenu;
+$('pause-continue').onclick = () => (injectPause = true);
+$('pause-replay').onclick = () => startNight(night);
+$('pause-settings').onclick = () => openSettings('pause');
+$('pause-menu').onclick = toMenu;
+
+let settingsBack = 'menu';
+function openSettings(from) {
+  settingsBack = from;
+  $('set-volume').value = String(settings.volume);
+  $('set-sens').value = String(settings.sensitivity);
+  showScreen('settings');
+}
+$('set-volume').oninput = (e) => {
+  settings.volume = Number(e.target.value);
+  sound.setVolume(settings.volume);
+  saveSettings(settings);
+};
+$('set-sens').oninput = (e) => {
+  settings.sensitivity = Number(e.target.value);
+  saveSettings(settings);
+};
+$('set-back').onclick = () => showScreen(settingsBack === 'pause' ? 'pause' : 'menu');
+
+// ---------- FPS meter (for the >= 30 FPS @ 1280x720 check) ----------
+const fps = { frames: 0, start: performance.now(), avg: 0 };
+window.__fps = fps;
+window.__game = { get world() { return world; }, get scene() { return scene; } }; // debug handle for browser checks
+const fpsEl = $('fps');
+fpsEl.hidden = !new URLSearchParams(location.search).has('fps');
+
+// ---------- loop ----------
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.25, (now - last) / 1000);
+  last = now;
+  if (screen === 'play') {
+    acc += dt;
+    while (acc >= DT && world.state === 'playing') {
+      const input = readInput();
+      const wasGrounded = world.player.grounded;
+      for (const e of step(world, input)) sound.event(e);
+      if (input.pressed.jump && wasGrounded && !world.player.grounded) sound.jump();
+      acc -= DT;
+    }
+    if (world.state !== 'playing') endNight();
+    else {
+      const pauseOpen = world.paused && $('settings').hidden;
+      $('pause').hidden = !pauseOpen;
+      const sec = Math.ceil(world.timeLeft);
+      if (!world.paused && sec <= 10 && sec !== lastCountdown) {
+        lastCountdown = sec;
+        sound.countdown();
+      }
     }
   }
-  for (const [id, m] of map) if (!seen.has(id)) (scene.remove(m), map.delete(id));
-}
-
-function makeLantern() {
-  const g = new THREE.Group();
-  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 3, 12), new THREE.MeshStandardMaterial({ color: 0x5c4033 }));
-  pillar.position.y = 1.5;
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), new THREE.MeshStandardMaterial({ color: 0x332244, emissive: 0x000000 }));
-  lamp.position.y = 3.4;
-  const light = new THREE.PointLight(0xff9a3c, 0, 14);
-  light.position.y = 3.4;
-  g.add(pillar, lamp, light);
-  g.userData = { lamp, light };
-  return g;
-}
-
-function makeShade() {
-  return new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), new THREE.MeshStandardMaterial({ color: 0x1b0b2e, emissive: 0x2a0a40 }));
-}
-
-function render(w, alphaTime) {
-  const p = w.player;
-  mayGroup.position.set(p.pos[0], p.pos[1], p.pos[2]);
-  syncMap(lanternMeshes, w.lanterns, makeLantern);
-  for (const l of w.lanterns) {
-    const g = lanternMeshes.get(l.id);
-    g.position.set(...l.pos);
-    g.userData.lamp.material.emissive.setHex(l.lit ? 0xff9a3c : 0x000000);
-    g.userData.light.intensity = l.lit ? 8 : 0;
+  if (scene && world) {
+    scene.render(world, camYawDeg, now / 1000);
+    if (screen === 'play') hud.update(world, scene, now / 1000, totalScore);
+  } else {
+    renderer.setClearColor(0x0e1430);
+    renderer.clear();
   }
-  syncMap(moteMeshes, w.motes, () => new THREE.Mesh(moteGeo, moteMat));
-  for (const m of w.motes) moteMeshes.get(m.id).position.set(m.pos[0], 0.8 + 0.2 * Math.sin(alphaTime * 3 + m.pos[0]), m.pos[2]);
-  syncMap(shadeMeshes, w.shades, makeShade);
-  for (const s of w.shades) shadeMeshes.get(s.id).position.set(...s.pos);
-
-  // third-person camera behind Mây, looking along the camera yaw
-  const th = (camYawDeg * Math.PI) / 180;
-  camera.position.set(p.pos[0] - Math.sin(th) * 9, p.pos[1] + 5, p.pos[2] - Math.cos(th) * 9);
-  camera.lookAt(p.pos[0], p.pos[1] + 1.2, p.pos[2]);
-  renderer.render(scene, camera);
-}
-
-const hud = document.getElementById('hud');
-function updateHud(w) {
-  const lit = w.lanterns.filter((l) => l.lit).length;
-  const end = w.state === 'won' ? '\nYOU WIN · Enter to replay' : w.state === 'lost' ? '\nGAME OVER · Enter to replay' : w.paused ? '\nPAUSED · Esc/P to continue' : '';
-  const p = w.player;
-  const pulse = p.pulseCdTicks ? `${(p.pulseCdTicks / 60).toFixed(1)}s` : 'ready';
-  hud.textContent = `Time ${w.timeLeft.toFixed(0)}s   Score ${w.score}\nFlames ${p.flames}   Carried ${p.carried}/10\nLanterns ${lit}/${w.lanterns.length}   Pulse ${pulse}${end}`;
+  fps.frames++;
+  if (now - fps.start >= 1000) {
+    fps.avg = (fps.frames * 1000) / (now - fps.start);
+    fps.frames = 0;
+    fps.start = now;
+    fpsEl.textContent = `${fps.avg.toFixed(0)} FPS · ${innerWidth}×${innerHeight}`;
+  }
+  requestAnimationFrame(frame);
 }
 
 function resize() {
   renderer.setSize(innerWidth, innerHeight);
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
+  scene?.resize(innerWidth, innerHeight);
 }
 addEventListener('resize', resize);
 resize();
-
-// ---------- loop ----------
-let world = createWorld({ seed: Date.now() >>> 0, night: 1 });
-let acc = 0;
-let last = performance.now();
-function frame(now) {
-  acc += Math.min(0.25, (now - last) / 1000);
-  last = now;
-  if (pressedOnce.has('Enter') && world.state !== 'playing') world = createWorld({ seed: Date.now() >>> 0, night: 1 });
-  pressedOnce.clear();
-  while (acc >= DT) {
-    step(world, readInput());
-    acc -= DT;
-  }
-  render(world, now / 1000);
-  updateHud(world);
-  requestAnimationFrame(frame);
-}
+showScreen('menu');
+hud.show(false);
 requestAnimationFrame(frame);
