@@ -1,0 +1,1 @@
+node src/headless/cli.js --seed 1 --night 1 --ticks 140 --snapshot-every 5 --scenario tests\scenarios\pulse-stun\scenario.json --inputs tests\scenarios\pulse-stun\inputs.json --out out.jsonl
