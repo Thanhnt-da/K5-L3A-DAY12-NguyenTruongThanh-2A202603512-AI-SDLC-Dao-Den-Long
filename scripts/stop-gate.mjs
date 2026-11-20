@@ -16,12 +16,16 @@ try {
 
 const cwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const r = spawnSync(process.execPath, ['--test', 'tests/'], { encoding: 'utf8', cwd });
-if (r.status === 0) process.exit(0);
+// Phase 2: also build the client. Tests only cover src/sim, so a broken client
+// import once slipped through with all tests green.
+const b = r.status === 0 ? spawnSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build', '--logLevel', 'error'], { encoding: 'utf8', cwd }) : { status: 0 };
+if (r.status === 0 && b.status === 0) process.exit(0);
 
-const failures = (r.stdout + r.stderr)
+const failures = (r.status !== 0 ? r.stdout + r.stderr : b.stdout + b.stderr)
   .split('\n')
-  .filter((l) => l.startsWith('✖') || /AssertionError|Error:/.test(l))
+  .filter((l) => l.startsWith('✖') || /AssertionError|Error|error/.test(l))
   .slice(0, 30)
   .join('\n');
-process.stderr.write(`Tests are failing (npm test exit ${r.status}). Fix them before finishing, or tell the user plainly why they still fail.\n${failures}\n`);
+const what = r.status !== 0 ? `Tests are failing (npm test exit ${r.status})` : `The client build is failing (vite build exit ${b.status})`;
+process.stderr.write(`${what}. Fix it before finishing, or tell the user plainly why it still fails.\n${failures}\n`);
 process.exit(hookInput.stop_hook_active ? 0 : 2);
