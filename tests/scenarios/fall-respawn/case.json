@@ -1,0 +1,4 @@
+{
+  "description": "Mây at x=39.5 carrying 4 runs off the 40 m island edge. Expect player_hit by fall (flames 2, lost 4) about 60 ticks later, then respawn at (0,0,0) invulnerable 60 ticks after that.",
+  "seed": 1, "ticks": 200, "snapshot_every": 10
+}

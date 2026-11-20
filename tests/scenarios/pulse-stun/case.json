@@ -1,0 +1,4 @@
+{
+  "description": "Shade S1 chasing from 3 m; Mây (3 fireflies) pulses at tick 0. Expect pulse stunned_ids [S1], carried 0, score 5, S1 pushed to x=7 by tick 15, stunned until tick 120, no player_hit.",
+  "seed": 1, "ticks": 140, "snapshot_every": 5
+}

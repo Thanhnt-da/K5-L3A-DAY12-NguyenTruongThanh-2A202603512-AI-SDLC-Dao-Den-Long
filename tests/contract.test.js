@@ -19,13 +19,17 @@ const file = (name, obj) => {
   return p;
 };
 
-test('game.contract.json has every required key', () => {
+// Phase 2: version check changed 1.0 -> 1.1 (Ticket-02 Part 4); tuning must now equal the standard numbers.
+test('game.contract.json is v1.1 and tuning matches the Ticket-02 standard numbers', () => {
   for (const k of ['contract_version', 'team', 'build_cmd', 'run_cmd', 'headless_cmd', 'tuning']) assert.ok(k in contract, k);
-  assert.equal(contract.contract_version, '1.0');
-  const t = contract.tuning;
-  for (const k of ['player_speed', 'carry_capacity', 'lantern_cost', 'lantern_count_night1', 'pickup_radius', 'interact_radius', 'pulse_cost', 'pulse_radius', 'night1_duration_s', 'flames', 'invuln_s', 'hit_drop_ratio', 'pulse_stun_s', 'pulse_push_m', 'pulse_cooldown_s', 'safe_radius', 'shade_speed', 'shade_hit_radius', 'fall_enabled', 'score']) assert.ok(k in t, `tuning.${k}`);
-  for (const k of ['per_mote', 'per_lantern', 'per_stun', 'per_second_left', 'per_flame_left']) assert.ok(k in t.score, `tuning.score.${k}`);
-  assert.equal(t.lantern_count_night1, 5);
+  assert.equal(contract.contract_version, '1.1');
+  assert.deepEqual(contract.tuning, {
+    player_speed: 6, carry_capacity: 10, lantern_cost: 10, lantern_count_night1: 5, pickup_radius: 1, interact_radius: 2,
+    pulse_cost: 3, pulse_radius: 5, night1_duration_s: 300, night2_duration_s: 330, night3_duration_s: 360, flames: 3,
+    invuln_s: 1.5, hit_drop_ratio: 0.5, pulse_stun_s: 2, pulse_push_m: 4, pulse_cooldown_s: 3, safe_radius: 6,
+    shade_speed: 4, shade_hit_radius: 1, fall_enabled: true, dash_speed: 14, dash_duration_s: 0.2, dash_cooldown_s: 1.5,
+    score: { per_mote: 10, per_lantern: 100, per_stun: 5, per_second_left: 2, per_flame_left: 50 },
+  });
 });
 
 test('CLI writes snapshot at tick 0, every N ticks, and a final end line; exit 0', () => {

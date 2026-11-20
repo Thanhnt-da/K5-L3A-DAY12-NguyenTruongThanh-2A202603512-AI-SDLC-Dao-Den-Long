@@ -1,6 +1,6 @@
 import { FormatError } from './errors.js';
 
-const BUTTONS = ['jump', 'interact', 'pulse', 'dash'];
+const BUTTONS = ['jump', 'interact', 'pulse', 'dash', 'pause'];
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
@@ -30,8 +30,8 @@ export class InputTrack {
   constructor(frames = []) {
     this.frames = frames;
     this.idx = 0;
-    this.cur = { move: [0, 0], cam_yaw_deg: 0, jump: false, interact: false, pulse: false, dash: false };
-    this.prevButtons = { jump: false, interact: false, pulse: false, dash: false };
+    this.cur = { move: [0, 0], cam_yaw_deg: 0, jump: false, interact: false, pulse: false, dash: false, pause: false };
+    this.prevButtons = { jump: false, interact: false, pulse: false, dash: false, pause: false };
   }
 
   /** Input for step k. Must be called with k = 0, 1, 2, ... in order. */

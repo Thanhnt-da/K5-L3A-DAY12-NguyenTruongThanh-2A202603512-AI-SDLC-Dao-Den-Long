@@ -1,0 +1,4 @@
+{
+  "description": "L2-L5 pre-lit, Mây next to L1 with 10 fireflies presses E. Expect deposit 10, lantern_lit L1, game_over won/all_lit at tick 1, score 100+100+598+150 = 948.",
+  "seed": 1, "ticks": 60, "snapshot_every": 1
+}
