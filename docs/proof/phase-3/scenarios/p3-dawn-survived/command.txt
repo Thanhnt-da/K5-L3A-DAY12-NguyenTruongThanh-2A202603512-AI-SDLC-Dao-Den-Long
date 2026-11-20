@@ -1,0 +1,1 @@
+node src/headless/cli.js --seed 1 --night 1 --ticks 100 --snapshot-every 30 --scenario tests\scenarios\p3-dawn-survived\scenario.json --out out.jsonl
