@@ -1,0 +1,6 @@
+{
+  "description": "Only 2 s left at setup and the player stands still. Expect game_over lost/dawn at tick 120 and the run to stop there.",
+  "seed": 5,
+  "ticks": 1000,
+  "snapshot_every": 60
+}

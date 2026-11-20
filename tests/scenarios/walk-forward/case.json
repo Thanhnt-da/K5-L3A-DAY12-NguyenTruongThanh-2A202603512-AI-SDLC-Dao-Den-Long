@@ -1,0 +1,6 @@
+{
+  "description": "Player walks +Z at full speed for 1 s (60 ticks), then jumps. Expect z = player_speed after tick 60 and back on the ground by tick 120.",
+  "seed": 1,
+  "ticks": 120,
+  "snapshot_every": 30
+}
