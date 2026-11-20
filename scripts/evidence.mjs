@@ -33,7 +33,7 @@ const rows = [];
 for (const name of readdirSync(join('tests', 'scenarios')).sort()) {
   const dir = join('tests', 'scenarios', name);
   const c = JSON.parse(readFileSync(join(dir, 'case.json'), 'utf8'));
-  const args = ['src/headless/cli.js', '--seed', String(c.seed), '--night', '1', '--ticks', String(c.ticks), '--snapshot-every', String(c.snapshot_every ?? 10)];
+  const args = ['src/headless/cli.js', '--seed', String(c.seed), '--night', String(c.night ?? 1), '--ticks', String(c.ticks), '--snapshot-every', String(c.snapshot_every ?? 10)];
   if (existsSync(join(dir, 'scenario.json'))) args.push('--scenario', join(dir, 'scenario.json'));
   if (existsSync(join(dir, 'inputs.json'))) args.push('--inputs', join(dir, 'inputs.json'));
   const caseOut = join(outDir, 'scenarios', name);

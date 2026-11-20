@@ -1,0 +1,1 @@
+{ "description": "Night 2. Mây steps onto the jump pad at (20,0,18). Expect launch at 24 m/s towards island B, about 1.4 s of flight, landing grounded inside island B (within 28 m of (70,0,0)), no fall.", "night": 2, "seed": 1, "ticks": 120, "snapshot_every": 10 }
