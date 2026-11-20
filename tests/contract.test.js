@@ -20,15 +20,17 @@ const file = (name, obj) => {
 };
 
 // Phase 2: version check changed 1.0 -> 1.1 (Ticket-02 Part 4); tuning must now equal the standard numbers.
-test('game.contract.json is v1.1 and tuning matches the Ticket-02 standard numbers', () => {
+// Phase 3: updated to v1.2 (Ticket-03 Part 7): new fuel/win/capacity keys, Nights 240/270/300 s, new score values.
+test('game.contract.json is v1.2 and tuning matches the Ticket-02 + Ticket-03 standard numbers', () => {
   for (const k of ['contract_version', 'team', 'build_cmd', 'run_cmd', 'headless_cmd', 'tuning']) assert.ok(k in contract, k);
-  assert.equal(contract.contract_version, '1.1');
+  assert.equal(contract.contract_version, '1.2');
   assert.deepEqual(contract.tuning, {
     player_speed: 6, carry_capacity: 10, lantern_cost: 10, lantern_count_night1: 5, pickup_radius: 1, interact_radius: 2,
-    pulse_cost: 3, pulse_radius: 5, night1_duration_s: 300, night2_duration_s: 330, night3_duration_s: 360, flames: 3,
+    pulse_cost: 3, pulse_radius: 5, night1_duration_s: 240, night2_duration_s: 270, night3_duration_s: 300, flames: 3,
     invuln_s: 1.5, hit_drop_ratio: 0.5, pulse_stun_s: 2, pulse_push_m: 4, pulse_cooldown_s: 3, safe_radius: 6,
     shade_speed: 4, shade_hit_radius: 1, fall_enabled: true, dash_speed: 14, dash_duration_s: 0.2, dash_cooldown_s: 1.5,
-    score: { per_mote: 10, per_lantern: 100, per_stun: 5, per_second_left: 2, per_flame_left: 50 },
+    score: { per_mote: 5, per_lantern: 100, per_stun: 5, per_second_left: 0, per_flame_left: 50 },
+    fuel_max: 100, fuel_decay_per_s: 1, fuel_per_mote: 10, relight_cost: 5, win_ratio: 0.6, drain_per_s: 5, low_fuel_threshold: 30, capacity_max: 20,
   });
 });
 
@@ -99,7 +101,8 @@ test('scenario setup: replaces lists, keeps unmentioned lanterns, emits nothing,
   assert.equal(s.score, 0);
   assert.equal(s.motes_active, 1);
   assert.deepEqual(s.shades.map((x) => x.id), ['S1']);
-  assert.deepEqual(s.lanterns[0], { id: 'L1', pos: [0, 0, 25], lit: true, deposited: 0 });
+  // Phase 3: lanterns now also report fuel / ever_lit / relit_count (Contract v1.2); lit without fuel => 100
+  assert.deepEqual(s.lanterns[0], { id: 'L1', pos: [0, 0, 25], lit: true, deposited: 0, fuel: 100, ever_lit: true, relit_count: 0 });
   assert.equal(s.lanterns[1].lit, false);
   assert.equal(s.time_left_s, 100);
   assert.equal(s.player.carried, 2);

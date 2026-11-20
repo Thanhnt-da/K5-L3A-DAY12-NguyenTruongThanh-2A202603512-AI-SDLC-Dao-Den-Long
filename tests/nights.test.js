@@ -18,10 +18,11 @@ test('night_start {night} is the first event (tick 1); --night 2/3 load their ma
   }
 });
 
-test('Night 2 Đảo Cau: 6 lanterns at standard positions, 330 s, charm C1 at (35,0,0)', () => {
+// Phase 3: Night lengths changed to 240/270/300 s (Ticket-03 Part 3)
+test('Night 2 Đảo Cau: 6 lanterns at standard positions, 270 s, charm C1 at (35,0,0)', () => {
   const s = run({ night: 2, ticks: 0 })[0];
   assert.deepEqual(s.lanterns.map((l) => [l.id, ...l.pos]), [['L1', 0, 0, 25], ['L2', 17, 0, -10], ['L3', -17, 0, -10], ['L4', 70, 0, 25], ['L5', 87, 0, -10], ['L6', 53, 0, -10]]);
-  assert.equal(s.time_left_s, 330);
+  assert.equal(s.time_left_s, 270);
   assert.deepEqual(s.charms, [{ id: 'C1', available: true, respawn_s: 0 }]);
   assert.equal(s.motes_active, 20);
 });
@@ -50,7 +51,7 @@ test('Night 3 Đảo Chuông: 7 lanterns on 3 levels, fireflies spawn on all lev
   const s = run({ night: 3, ticks: 0, scenario: { random_shades: false } })[0];
   assert.deepEqual(s.lanterns.map((l) => l.pos[1]), [6, 3, 3, 0, 0, 0, 0]);
   assert.deepEqual(s.player.pos, [0, 0, -30]);
-  assert.equal(s.time_left_s, 360);
+  assert.equal(s.time_left_s, 300);
   assert.equal(s.motes_active, 20);
   for (const m of s.motes) assert.ok([0, 3, 6].includes(m.pos[1]));
 });
@@ -148,10 +149,12 @@ test('Bùa Gió: pickup gives 600 ticks of 7.2 m/s and dash without cooldown; re
   assert.equal(snap(lines, 2701).charms[0].available, true);
 });
 
-test('performance: a full Night 3 headless run (21,600 tick budget) finishes under 30 s', () => {
+// Phase 3: Night 3 is now 300 s (18,000 ticks). Lanterns burn out, so a safe zone no longer keeps Mây safe;
+// the run uses 200 flames instead so it reaches dawn with all spawns active.
+test('performance: a full Night 3 headless run to dawn (18,000 ticks) finishes under 30 s', () => {
   const t0 = performance.now();
-  const lines = run({ night: 3, ticks: 21600, snapshotEvery: 10, scenario: { player: { pos: [35, 0, -14] }, lanterns: [{ id: 'L4', lit: true }], wind_enabled: false } }); // wind off: a gust would push Mây out of the safe zone
+  const lines = run({ night: 3, ticks: 21600, snapshotEvery: 10, scenario: { player: { pos: [35, 0, -14], flames: 200 } } });
   const ms = performance.now() - t0;
-  assert.deepEqual(lines.at(-1), { type: 'end', ticks: 21600, state: 'lost', score: 0 });
+  assert.deepEqual(lines.at(-1), { type: 'end', ticks: 18000, state: 'lost', score: 0 });
   assert.ok(ms < 30000, `${ms} ms`);
 });

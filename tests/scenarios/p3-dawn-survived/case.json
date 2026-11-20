@@ -1,0 +1,1 @@
+{ "description": "Phase 3 (replaces last-lantern-win, whose instant all_lit win Ticket-03 removed). L1-L3 lit, 1 s to dawn, Mây safe. Expect game_over won/dawn_survived at tick 60, score 3*(50+99) + 3*50 = 597.", "night": 1, "seed": 1, "ticks": 100, "snapshot_every": 30 }

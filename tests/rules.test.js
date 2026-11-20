@@ -27,13 +27,13 @@ test('pickup: capacity 10 is never exceeded', () => {
 test('lantern: interact deposits min(carried, missing) into the nearest unlit lantern; 10 lights it', () => {
   let lines = run({ scenario: quiet({ player: { pos: [0, 0, 23.5], carried: 4 } }), inputs: { frames: press('interact', 0) } });
   assert.deepEqual(ev(lines, 'deposit')[0].data, { lantern_id: 'L1', amount: 4, deposited: 4 });
-  assert.equal(snap(lines, 1).score, 40);
+  assert.equal(snap(lines, 1).score, 20); // Phase 3: +5 per firefly put in (was +10)
   assert.equal(ev(lines, 'lantern_lit').length, 0);
 
   lines = run({ scenario: quiet({ player: { pos: [0, 0, 23.5], carried: 10 }, lanterns: [{ id: 'L1', deposited: 4 }] }), inputs: { frames: press('interact', 0) } });
   assert.deepEqual(ev(lines, 'deposit')[0].data, { lantern_id: 'L1', amount: 6, deposited: 10 });
-  assert.deepEqual(ev(lines, 'lantern_lit')[0], { type: 'event', tick: 1, name: 'lantern_lit', data: { lantern_id: 'L1' } });
-  assert.equal(snap(lines, 1).score, 60 + 100);
+  assert.deepEqual(ev(lines, 'lantern_lit')[0], { type: 'event', tick: 1, name: 'lantern_lit', data: { lantern_id: 'L1', relight: false } }); // Phase 3: lantern_lit gained 'relight'
+  assert.equal(snap(lines, 1).score, 30 + 100); // Phase 3: 6 x 5 + 100 for a first lighting
   assert.equal(snap(lines, 1).player.carried, 4);
 });
 
@@ -44,12 +44,15 @@ test('lantern: tie in distance goes to the smaller id; out of 2.0 m does nothing
   assert.equal(ev(lines, 'deposit').length, 0);
 });
 
-test('win: lighting the last lantern wins; bonus floor(seconds left)*2 + 50*flames', () => {
+// Phase 3: REMOVED test 'win: lighting the last lantern wins; bonus floor(seconds left)*2 + 50*flames'.
+// Ticket-03 Part 3 replaces the instant all_lit win with dawn_survived and Part 5 drops the time bonus.
+// The new win rule is tested in tests/fuel.test.js.
+test('lighting every lantern no longer ends the Night (Ticket-03)', () => {
   const lanterns = ['L2', 'L3', 'L4', 'L5'].map((id) => ({ id, lit: true }));
   const lines = run({ scenario: quiet({ player: { pos: [0, 0, 23.5], carried: 10 }, lanterns }), inputs: { frames: press('interact', 0) } });
-  assert.deepEqual(ev(lines, 'game_over')[0], { type: 'event', tick: 1, name: 'game_over', data: { result: 'won', reason: 'all_lit' } });
-  // 10*10 deposit + 100 lantern + floor(299.983)*2 + 3*50
-  assert.deepEqual(lines.at(-1), { type: 'end', ticks: 1, state: 'won', score: 100 + 100 + 598 + 150 });
+  assert.equal(ev(lines, 'lantern_lit').length, 1);
+  assert.equal(ev(lines, 'game_over').length, 0);
+  assert.equal(lines.at(-1).state, 'playing');
 });
 
 test('pulse: costs 3, stuns shades within 5 m for 120 ticks, pushes 4 m over 15 ticks, +5 each', () => {
@@ -163,16 +166,17 @@ test('pause: tick keeps counting, sim_tick and time stand still, snapshots say p
   assert.equal(s.state, 'paused');
   assert.equal(s.sim_tick, 10);
   assert.equal(snap(lines, 40).sim_tick, 30);
-  assert.equal(snap(lines, 40).time_left_s, 299.5);
+  assert.equal(snap(lines, 40).time_left_s, 239.5); // Phase 3: Night 1 is 240 s
 });
 
-test('performance: a full Night 1 headless run to dawn (18,000 ticks, all spawns) finishes under 30 s', () => {
-  // Player waits inside L1's safe zone so shades cannot end the run early: it must reach dawn.
+// Phase 3: Night 1 is 240 s (14,400 ticks) and lanterns burn out, so the safe-zone trick no longer works;
+// 200 flames keep Mây alive to dawn instead, with all spawns active.
+test('performance: a full Night 1 headless run to dawn (14,400 ticks, all spawns) finishes under 30 s', () => {
   const t0 = performance.now();
-  const out = runHeadless({ seed: 7, night: 1, ticks: 21600, scenario: { player: { pos: [0, 0, 25] }, lanterns: [{ id: 'L1', lit: true }] } });
+  const out = runHeadless({ seed: 7, night: 1, ticks: 21600, scenario: { player: { pos: [0, 0, 25], flames: 200 }, lanterns: [{ id: 'L1', lit: true }] } });
   const ms = performance.now() - t0;
   const lines = out.trim().split('\n').map((l) => JSON.parse(l));
-  assert.deepEqual(lines.at(-1), { type: 'end', ticks: 18000, state: 'lost', score: 0 });
+  assert.deepEqual(lines.at(-1), { type: 'end', ticks: 14400, state: 'lost', score: 0 });
   assert.equal(ev(lines, 'shade_spawned').length, 6);
   assert.ok(ms < 30000, `${ms} ms`);
 });

@@ -1,0 +1,1 @@
+{ "description": "Phase 3. L1 lit with fuel 20, a wandering shade 3 m away, Mây far off. Expect the shade to enter drain, fuel_drain every 60 ticks (6 fuel per 60 ticks with burn), then lantern_out L1 and the shade back to wander.", "night": 1, "seed": 1, "ticks": 600, "snapshot_every": 60 }
