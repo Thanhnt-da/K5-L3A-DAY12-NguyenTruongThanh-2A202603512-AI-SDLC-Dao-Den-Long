@@ -8,7 +8,9 @@
 - [Vite](https://vite.dev/), MIT License: dev server and build.
 
 ## Assets
-- All 3D models are built from three.js primitive shapes in code. No external models, textures or sounds yet.
+- All 3D models are built from three.js primitive shapes in code. No external models or textures.
+- All sound and music are synthesised in code with the Web Audio API (`src/client/audio.js`). No audio files.
+- Ông Đăng's Night intro lines are written for this game.
 
 ## AI tools
 - Claude Code (Anthropic, model Claude Opus 5.5): code, tests, docs, under my direction and review. See [docs/notes/ai-log.md](docs/notes/ai-log.md).

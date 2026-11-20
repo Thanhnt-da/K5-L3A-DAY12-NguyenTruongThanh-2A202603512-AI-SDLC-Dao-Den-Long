@@ -4,7 +4,7 @@
 
 Mây, a young lantern keeper, collects fireflies to relight the Big Lanterns of a cloud-sea island while dodging the Bóng Mực in the black fog. 3D third-person, runs in the browser (Three.js); game logic is a pure deterministic simulation that also runs headless (Node) for the Test Contract.
 
-> Status: **Phase 2 in progress.** Night 1 plays fully with the Ticket-02 standard numbers (Contract v1.1). Nights 2–3, Gió Lạc, Bùa Gió pickups, menus and sound are next. What is verified: [docs/notes/phase-2.md](docs/notes/phase-2.md), [docs/proof/](docs/proof/).
+> Status: **Phase 2.** Three Nights (Đảo Bến, Đảo Cau, Đảo Chuông) with the Ticket-02 standard numbers and Contract v1.1: Gió Lạc, Bùa Gió, wind, jump pads, menus, pause, settings, sound, full HUD. Verified: [docs/notes/phase-2.md](docs/notes/phase-2.md), [docs/proof/](docs/proof/).
 
 ## Install and run (macOS / Linux, Node.js 20+)
 
@@ -14,7 +14,7 @@ npm run build
 npm start          # then open http://localhost:4173
 ```
 
-`npm run dev` starts a hot-reload dev server instead. The built `dist/` folder is a static site and can be served by any web server.
+`npm run dev` starts a hot-reload dev server instead. Add `?night=2` or `?night=3` to the URL to start from that Night, and `?fps` to show an FPS counter. The built `dist/` folder is a static site and can be served by any web server.
 
 ## Controls
 
@@ -26,8 +26,8 @@ npm start          # then open http://localhost:4173
 | Shift | Dash |
 | E | Deposit fireflies into the nearest unlit lantern |
 | F | Light pulse (costs 3 fireflies) |
-| Esc / P | Pause / continue |
-| Enter | Replay after win / loss |
+| Esc / P | Pause menu (continue, replay Night, settings, main menu) |
+| Enter | Confirm on menus (start, play, next Night, replay) |
 
 ## Scoring
 

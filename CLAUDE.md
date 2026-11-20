@@ -18,7 +18,8 @@
 ## Layout
 - `src/sim/`: pure deterministic simulation. Shared by browser and headless.
 - `src/headless/cli.js`: Test Contract CLI (exit 2 = malformed inputs/scenario).
-- `src/client/`: Three.js rendering + keyboard input only. No game rules here.
+- `src/client/`: `main.js` (screens, input, loop), `scene.js` (Three.js, draws `map.shapes`), `hud.js`, `audio.js` (synthesised, no files), `settings.js`. No game rules here.
+- Browser checks: `npm run build && npm start`, open `/?fps&night=N`; `window.__game.world` / `.scene` expose live state for inspection.
 - `game.contract.json`: contract declaration. `tuning` is imported by `src/sim/config.js`; it is the only place gameplay numbers live.
 - `tests/`: `node:test` files; `tests/scenarios/<case>/`: headless scenario files.
 

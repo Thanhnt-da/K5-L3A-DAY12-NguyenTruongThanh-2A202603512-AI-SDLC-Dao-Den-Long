@@ -7,6 +7,10 @@
 - Client: new controls (Shift dash, E deposit, F pulse, Esc/P pause); quick key taps no longer get lost.
 - Harness: Stop hook also builds the client; evidence script ignores its own output when checking for uncommitted changes.
 - 18 new rule tests (29 total).
+- Nights 2 (Đảo Cau) and 3 (Đảo Chuông): bridge, jump pads, 3 levels with cliffs and ramps, bell tower, wind gusts; Gió Lạc; Bùa Gió pickups; `night_start`.
+- Terrain shapes are plain data shared by sim and client.
+- Client: 3-Night chain with menu, intros, results and Bình Minh screen; pause menu; saved settings; synthesised sound; full HUD; standard palette; `?night=` and `?fps` URL options; 1280×720 runs at ~60 FPS.
+- 15 Night 2-3 tests (44 total), 3 more headless scenarios.
 
 ## phase-1
 

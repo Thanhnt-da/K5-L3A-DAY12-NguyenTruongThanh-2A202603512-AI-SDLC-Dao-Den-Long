@@ -9,6 +9,7 @@ Tool: Claude Code (desktop app), model Claude Opus 5.5. Token figures are estima
 | 2026-11-20 | 1→2 | Read Ticket-02 from the lab board (needed sign-in in the browser pane; text read from screenshots), saved working copy | Checked numbers against the screenshots | First read of the board missed Phase 2 because the tab loads only when signed in | _fill in_ |
 | 2026-11-20 | 1 | Phase 1 evaluation, evidence, tag `phase-1` | Evidence PASS (11 tests, 2 scenarios) | Evidence summary flagged its own new files as "uncommitted changes"; script fixed in Phase 2 | _fill in_ |
 | 2026-11-20 | 2 | Rewrite sim for standard numbers + 12-step tick order, 18 rule tests, client controls | 29/29 tests, build ok, pause checked in browser | (1) client import broke the build while tests were green → Stop hook now builds; (2) "full night" perf test ended early at tick ~1700 → test now asserts it reaches dawn; (3) key taps lost between frames → latched taps | _fill in_ |
+| 2026-11-20 | 2 | Nights 2-3, Gió Lạc, Bùa Gió, wind (sim) + 15 tests; new client (screens, HUD, sound, settings) | 44/44 tests, build ok, browser check of menu/intro/HUD/pause, FPS 59.7 at 1280×720 | 3 wrong tests (charm on bridge, cliff boundary, wind in perf run): game was right, tests fixed with reasons; angle direction for map points was flipped; first client ran at only 33 FPS → pixel ratio 1 + Lambert | _fill in_ |
 
 ## Token-saving habits
 - Short `CLAUDE.md`, requirements summarised once in `docs/notes/` instead of re-pasting the lab board.
