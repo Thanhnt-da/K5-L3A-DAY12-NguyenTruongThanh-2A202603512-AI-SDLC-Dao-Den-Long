@@ -10,6 +10,18 @@ Tool: Claude Code (desktop app), model Claude Opus 5.5. Token figures are estima
 | 2026-11-20 | 1 | Phase 1 evaluation, evidence, tag `phase-1` | Evidence PASS (11 tests, 2 scenarios) | Evidence summary flagged its own new files as "uncommitted changes"; script fixed in Phase 2 | _fill in_ |
 | 2026-11-20 | 2 | Rewrite sim for standard numbers + 12-step tick order, 18 rule tests, client controls | 29/29 tests, build ok, pause checked in browser | (1) client import broke the build while tests were green → Stop hook now builds; (2) "full night" perf test ended early at tick ~1700 → test now asserts it reaches dawn; (3) key taps lost between frames → latched taps | _fill in_ |
 | 2026-11-20 | 2 | Nights 2-3, Gió Lạc, Bùa Gió, wind (sim) + 15 tests; new client (screens, HUD, sound, settings) | 44/44 tests, build ok, browser check of menu/intro/HUD/pause, FPS 59.7 at 1280×720 | 3 wrong tests (charm on bridge, cliff boundary, wind in perf run): game was right, tests fixed with reasons; angle direction for map points was flipped; first client ran at only 33 FPS → pixel ratio 1 + Lambert | _fill in_ |
+| 2026-11-20 | 3 | Read Ticket-03; fuel model, drain, dawn win, scoring, capacity; updated 9 replaced-rule tests with reasons; 12 new tests; client fuel bars + colour-blind; ADR | 56/56 tests, build ok, browser check | 2 wrong test expectations (impossible "full lantern" case, 70 vs 69.9); stale screenshot; inline shell script quoting | 5-h limit 41% → 50% (+9 pts); context 389k → 458k |
+
+## Token usage readings (Claude Pro plan: % of limits, no per-token price)
+
+Read with the desktop app's usage tool (`get_usage`). Pro is a flat subscription, so cost is tracked as % of the plan's limits.
+
+| When | 5-hour limit | Weekly (all models) | Conversation context |
+|---|---|---|---|
+| Before reading Ticket-03 (after setup + Phases 1–2) | 41% | 71% | 389k tokens |
+| End of Phase 3 build (before evidence/tag) | 50% | 72% | 458k tokens |
+
+Setup + Phases 1–2 were not measured while they ran; together they used about 41% of one 5-hour window, plus some of the weekly share (the part already used before this lab can't be separated).
 
 ## Token-saving habits
 - Short `CLAUDE.md`, requirements summarised once in `docs/notes/` instead of re-pasting the lab board.

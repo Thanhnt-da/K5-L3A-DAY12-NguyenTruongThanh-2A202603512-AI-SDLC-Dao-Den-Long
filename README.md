@@ -4,7 +4,7 @@
 
 Mây, a young lantern keeper, collects fireflies to relight the Big Lanterns of a cloud-sea island while dodging the Bóng Mực in the black fog. 3D third-person, runs in the browser (Three.js); game logic is a pure deterministic simulation that also runs headless (Node) for the Test Contract.
 
-> Status: **Phase 2.** Three Nights (Đảo Bến, Đảo Cau, Đảo Chuông) with the Ticket-02 standard numbers and Contract v1.1: Gió Lạc, Bùa Gió, wind, jump pads, menus, pause, settings, sound, full HUD. Verified: [docs/notes/phase-2.md](docs/notes/phase-2.md), [docs/proof/](docs/proof/).
+> Status: **Phase 3** (Ticket-03 "Đèn cạn dầu", Contract v1.2). Lanterns burn fuel and can go out, Bóng Mực drain weak lanterns, and you win by **keeping at least 60% of the lanterns lit until dawn**. Verified: [docs/notes/phase-3.md](docs/notes/phase-3.md), [ADR 0001](docs/adr/0001-lantern-fuel-and-dawn-win.md), [docs/proof/](docs/proof/).
 
 ## Install and run (macOS / Linux, Node.js 20+)
 
@@ -24,19 +24,20 @@ npm start          # then open http://localhost:4173
 | Mouse drag, Q / R, ← / → | Rotate camera |
 | Space | Jump |
 | Shift | Dash |
-| E | Deposit fireflies into the nearest unlit lantern |
+| E | Light / relight a lantern, or refuel a lit one (the nearest that accepts) |
 | F | Light pulse (costs 3 fireflies) |
 | Esc / P | Pause menu (continue, replay Night, settings, main menu) |
 | Enter | Confirm on menus (start, play, next Night, replay) |
 
 ## Scoring
 
-Ticket-02 standard scoring (`game.contract.json` → `tuning.score`):
+Ticket-03 scoring (`game.contract.json` → `tuning.score`, details in `docs/notes/phase-3-ticket.md`):
 
-- +10 per firefly **deposited** into a lantern (picking up gives nothing yet)
-- +100 per lantern lit
-- +5 per Bóng Mực hit by a light pulse (each one, each time)
-- On a win: + `floor(seconds left) × 2` + 50 × flames left
+- +5 per firefly put into a lantern (lighting, relighting or refuelling)
+- +100 for lighting a lantern the first time, +40 for relighting one that went out
+- +5 per Bóng Mực hit by a light pulse; +15 in total if it was draining a lantern
+- At dawn, only on a win: each lit lantern +50 + floor(its fuel), each flame left +50
+- Win: survive until time runs out with at least 3/5 (Night 1), 4/6 (Night 2), 5/7 (Night 3) lanterns lit
 
 ## Tests and headless mode
 

@@ -9,11 +9,13 @@
 - Play: `npm run dev` (dev server) or `npm start` (serves the built `dist/`)
 - Evidence for phase N: `node scripts/evidence.mjs N` (see skill `verify-phase`)
 
-## Current scope (Phase 2, Contract v1.1)
-- Spec: `docs/notes/phase-2-ticket.md` (Ticket-02 copy), acceptance criteria + assumptions: `docs/notes/phase-2.md`.
+## Current scope (Phase 3, Contract v1.2)
+- Specs: `docs/notes/phase-2-ticket.md` + `docs/notes/phase-3-ticket.md` (Ticket-03 replaces some Ticket-02 rules: check it first). Criteria + assumptions: `docs/notes/phase-3.md`; design: `docs/adr/`.
+- Lantern fuel is integer 1/60 units (`FUEL_MAX = 6000`); never use float fuel in the sim.
 - All numbers are the Ticket-02 **standard numbers**: never invent or "tune" them. Contract keys live in `game.contract.json`; the rest in `RULES` (`src/sim/config.js`); maps in `src/sim/maps.js`.
 - `step()` in `src/sim/world.js` follows the ticket's mandatory 12-step tick order; keep new logic in the right numbered step.
-- Shade states must be exactly `spawning`, `wander`, `chase`, `recoil`, `stunned`.
+- Shade states must be exactly `spawning`, `wander`, `chase`, `recoil`, `stunned`, `drain`.
+- When a ticket replaces a rule: update or remove the old test with a `// Phase N:` comment and list it in that phase's notes.
 
 ## Layout
 - `src/sim/`: pure deterministic simulation. Shared by browser and headless.
