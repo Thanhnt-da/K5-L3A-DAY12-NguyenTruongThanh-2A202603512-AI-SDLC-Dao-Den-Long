@@ -39,4 +39,23 @@ export const RULES = Object.freeze({
   shadeSpawnTicks: 60, // assumption: harmless "spawning" state lasts 1 s
   shadeWanderSpeed: 1.5, // assumption
   shadeSpawnMinDist: 15,
+  // Gió Lạc (drifters), Nights 2-3
+  drifterSpeed: 7,
+  drifterIdleSpeed: 2,
+  drifterMax: 2,
+  drifterEveryTicks: 1200,
+  drifterChaseCarry: 5,
+  drifterChaseDist: 15,
+  drifterHitRadius: 1.2,
+  drifterStealMax: 3,
+  drifterFleeTicks: 240,
+  drifterVanishAfterDropTicks: 120,
+  // Bùa Gió (charms)
+  charmTicks: 600,
+  charmRespawnTicks: 2700,
+  charmSpeed: 7.2,
+  // wind (Night 3)
+  windEveryTicks: 1800,
+  windGustTicks: 300,
+  windPush: 2,
 });

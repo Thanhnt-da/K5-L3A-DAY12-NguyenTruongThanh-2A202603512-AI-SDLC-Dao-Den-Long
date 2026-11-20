@@ -80,10 +80,12 @@ test('tick model: input at tick k moves the player in step k; time_left_s = star
 
 test('move is rotated by cam_yaw_deg and normalised', () => {
   // yaw 90: x' = z*sin90 = +1 => move [0,1] goes +X
-  let s = parse(runHeadless({ seed: 1, ticks: 60, inputs: { frames: [{ tick: 0, move: [0, 1], cam_yaw_deg: 90 }] }, snapshotEvery: 60 }))[1];
+  // Phase 2: look the snapshot up by tick; the night_start event now precedes it in the output
+  const at60 = (lines) => lines.find((l) => l.type === 'snapshot' && l.tick === 60);
+  let s = at60(parse(runHeadless({ seed: 1, ticks: 60, inputs: { frames: [{ tick: 0, move: [0, 1], cam_yaw_deg: 90 }] }, snapshotEvery: 60 })));
   assert.deepEqual(s.player.pos, [6, 0, 0]);
   // [1,1] is normalised: total distance 6 m along the diagonal
-  s = parse(runHeadless({ seed: 1, ticks: 60, inputs: { frames: [{ tick: 0, move: [1, 1] }] }, snapshotEvery: 60 }))[1];
+  s = at60(parse(runHeadless({ seed: 1, ticks: 60, inputs: { frames: [{ tick: 0, move: [1, 1] }] }, snapshotEvery: 60 })));
   assert.ok(Math.abs(Math.hypot(s.player.pos[0], s.player.pos[2]) - 6) < 0.002);
 });
 
