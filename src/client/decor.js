@@ -103,9 +103,12 @@ export function buildDecor(scene, map, PAL) {
   const flowers = [];
   const flowerColors = [];
   const bushes = [];
+  const bushColors = [];
+  const ferns = [];
+  const greens = [0x2e6b4c, 0x3d7d55, 0x24583f, 0x4a8a5c].map((c) => new THREE.Color(c));
   const petals = [0xf2c14e, 0xe8e2d0, 0xc8102e, 0xb98cff].map((c) => new THREE.Color(c));
   for (const area of map.wanderAreas) {
-    const n = Math.round(area.r * area.r * 0.12);
+    const n = Math.round(area.r * area.r * 0.18);
     for (let i = 0; i < n; i++) {
       const a = rng() * Math.PI * 2;
       const r = Math.sqrt(rng()) * (area.r + 2);
@@ -114,11 +117,14 @@ export function buildDecor(scene, map, PAL) {
       const y = topAt(map, x, z);
       if (y === null || !free(x, z)) continue;
       const k = rng();
-      if (k < 0.6) grass.push(at(x, y, z, 0.7 + rng() * 0.6, rng() * 6));
-      else if (k < 0.85) {
+      if (k < 0.48) grass.push(at(x, y, z, 0.7 + rng() * 0.6, rng() * 6));
+      else if (k < 0.68) {
         flowers.push(at(x, y, z, 0.8 + rng() * 0.4));
         flowerColors.push(petals[Math.floor(rng() * petals.length)]);
-      } else bushes.push(at(x, y, z, 0.6 + rng() * 0.5, rng() * 6));
+      } else if (k < 0.9) {
+        bushes.push(at(x, y, z, 0.7 + rng() * 0.6, rng() * 6));
+        bushColors.push(greens[Math.floor(rng() * greens.length)]);
+      } else ferns.push(at(x, y, z, 0.8 + rng() * 0.5, rng() * 6));
     }
   }
   const blade = new THREE.ConeGeometry(0.08, 0.5, 3);
@@ -128,9 +134,16 @@ export function buildDecor(scene, map, PAL) {
   const flower = new THREE.SphereGeometry(0.1, 6, 4);
   flower.translate(0, 0.35, 0);
   instanced(scene, flower, new THREE.MeshBasicMaterial({ color: 0xffffff }), flowers, flowerColors);
-  const bush = new THREE.IcosahedronGeometry(0.45, 0);
-  bush.translate(0, 0.3, 0);
-  instanced(scene, bush, lambert(0x27503f, { flatShading: true }), bushes);
+  // lush bush: a cluster of rounded blobs, kept below waist height (walk-through looks natural)
+  const blob = (r, x, y, z) => new THREE.IcosahedronGeometry(r, 1).translate(x, y, z);
+  const bush = mergeGeometries([blob(0.42, 0, 0.35, 0), blob(0.32, 0.38, 0.26, 0.1), blob(0.3, -0.34, 0.24, -0.12), blob(0.26, 0.05, 0.22, 0.38), blob(0.24, -0.1, 0.62, 0.05)]);
+  instanced(scene, bush, lambert(0xffffff), bushes, bushColors);
+  // fern clump: thin leaning leaves
+  const leaf = new THREE.ConeGeometry(0.07, 0.8, 3).translate(0, 0.4, 0);
+  const fern = mergeGeometries([0, 1, 2, 3, 4, 5].map((i) => leaf.clone().rotateZ(0.55).rotateY((i / 6) * Math.PI * 2)));
+  instanced(scene, fern, lambert(0x4f9a63), ferns);
+
+  buildCliffs(scene, map, rng);
 
   // --- islets with trees and rocks in the cloud sea (unreachable, so no collision needed)
   const islets = [];
@@ -176,4 +189,90 @@ export function makePingBeam(PAL) {
   m.position.y = 15;
   m.visible = false;
   return m;
+}
+
+/**
+ * Hides the perfect disc shape without touching the walkable area: jagged rocks hang
+ * from each island's rim (all of them stay below ground level, so nothing looks like a
+ * wall you could walk through), a rocky upside-down cone forms the floating underside,
+ * and distant mountains sit on the horizon in the fog.
+ */
+function buildCliffs(scene, map, rng) {
+  const rockMat = new THREE.MeshLambertMaterial({ color: 0x5a5560, flatShading: true });
+  const rock = new THREE.DodecahedronGeometry(0.6, 0);
+  const o = new THREE.Object3D();
+  const mats = [];
+  const islands = map.shapes.filter((sh) => sh.kind === 'disc' && sh.y === 0 && !sh.tower);
+  for (const is of islands) {
+    // ring 0: low stones just OUTSIDE the walkable edge (r > island radius, <= 0.6 m tall):
+    // breaks the round outline and marks "edge here"; no collision, falling is unchanged
+    const n0 = Math.round((2 * Math.PI * is.r) / 0.8);
+    for (let i = 0; i < n0; i++) {
+      const a = (i / n0) * Math.PI * 2 + rng() * 0.04;
+      const r = is.r + 0.4 + rng() * 1.0;
+      const sc = 0.45 + rng() * 0.5;
+      o.position.set(is.cx + r * Math.cos(a), -0.15, is.cz + r * Math.sin(a));
+      o.rotation.set(rng() * 3, rng() * 3, rng() * 3);
+      o.scale.set(sc * 1.3, sc, sc * 1.3);
+      o.updateMatrix();
+      mats.push(o.matrix.clone());
+    }
+    // ring 1: rim crags, tops just below the walking surface
+    const n1 = Math.round((2 * Math.PI * is.r) / 1.1);
+    for (let i = 0; i < n1; i++) {
+      const a = (i / n1) * Math.PI * 2 + rng() * 0.05;
+      const r = is.r - 0.6 + rng() * 1.1;
+      const sc = 1.1 + rng() * 1.1;
+      o.position.set(is.cx + r * Math.cos(a), -0.3 - 0.6 * sc, is.cz + r * Math.sin(a));
+      o.rotation.set(rng() * 3, rng() * 3, rng() * 3);
+      o.scale.set(sc, sc * (0.8 + rng() * 0.7), sc);
+      o.updateMatrix();
+      mats.push(o.matrix.clone());
+    }
+    // ring 2: bigger boulders lower down the cliff face
+    const n2 = Math.round((2 * Math.PI * is.r) / 2);
+    for (let i = 0; i < n2; i++) {
+      const a = (i / n2) * Math.PI * 2 + rng() * 0.1;
+      const r = is.r * 0.92 - 0.5 + rng() * 1.5;
+      const sc = 1.6 + rng() * 1.4;
+      o.position.set(is.cx + r * Math.cos(a), -2.2 - rng() * 2.5, is.cz + r * Math.sin(a));
+      o.rotation.set(rng() * 3, rng() * 3, rng() * 3);
+      o.scale.set(sc, sc * (1 + rng()), sc);
+      o.updateMatrix();
+      mats.push(o.matrix.clone());
+    }
+    // rocky floating underside: an upside-down cone with jittered vertices
+    const h = is.r * 0.7;
+    const under = new THREE.ConeGeometry(is.r * 0.92, h, 14, 4);
+    const pos = under.attributes.position;
+    for (let v = 0; v < pos.count; v++) {
+      const y = pos.getY(v);
+      if (y > h / 2 - 0.01) continue; // keep the top ring matching the island edge
+      const k = 1 + (rng() - 0.5) * 0.18;
+      pos.setXYZ(v, pos.getX(v) * k, y + (rng() - 0.5) * 1.2, pos.getZ(v) * k);
+    }
+    under.computeVertexNormals();
+    const m = new THREE.Mesh(under, rockMat);
+    m.rotation.x = Math.PI;
+    m.position.set(is.cx, -2 - h / 2, is.cz);
+    scene.add(m);
+  }
+  instanced(scene, rock, rockMat, mats);
+
+  // distant mountains, half hidden in the fog
+  const cx = islands.reduce((t, is) => t + is.cx, 0) / Math.max(1, islands.length);
+  const mountain = new THREE.ConeGeometry(1, 1, 6, 2).translate(0, 0.5, 0);
+  const mm = [];
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2 + rng() * 0.2;
+    const d = 92 + rng() * 22;
+    const hgt = 10 + rng() * 16;
+    const rad = 12 + rng() * 14;
+    o.position.set(cx + d * Math.cos(a), -14, d * Math.sin(a));
+    o.rotation.set(0, rng() * 3, 0);
+    o.scale.set(rad, hgt, rad);
+    o.updateMatrix();
+    mm.push(o.matrix.clone());
+  }
+  instanced(scene, mountain, new THREE.MeshLambertMaterial({ color: 0x1d2748, flatShading: true }), mm);
 }

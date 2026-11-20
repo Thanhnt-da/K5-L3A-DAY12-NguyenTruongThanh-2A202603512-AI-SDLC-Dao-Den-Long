@@ -8,7 +8,7 @@
 - Local leaderboard (top 10, saved to a file by `server.js`), name prompt after Bình Minh or a loss, leaderboard screen, `node server.js --export-leaderboard out.json`.
 - Accessibility: key remapping with duplicate warning and reset, visual cues for sounds, reduced motion, larger UI (×1.25), UI text ≥ 18 px.
 - Release package `dao-den-long-v1.0.0.zip` (built game + server, run with `node server.js`).
-- Sáng tạo (browser only, no rule changes): Bóng Mực as small dark silhouettes with glowing eyes, an original hanging paper lantern, grass/flowers/bushes plus trees and rocks on cloud-sea islets, V-ping for the lantern that needs you.
+- Sáng tạo (browser only, no rule changes): Bóng Mực as small dark silhouettes with glowing eyes, an original hanging paper lantern, grass/flowers/bushes plus trees and rocks on cloud-sea islets, V-ping for the lantern that needs you, a craggy island rim with a rocky floating underside and distant mountains, and lush bush clusters with ferns.
 
 ### Fixed
 - Shade per-instance colours were ignored when shaders were pre-compiled before any shade existed.
