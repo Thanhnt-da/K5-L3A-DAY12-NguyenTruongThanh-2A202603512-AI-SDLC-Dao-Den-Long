@@ -11,6 +11,7 @@ Tool: Claude Code (desktop app), model Claude Opus 5.5. Token figures are estima
 | 2026-11-20 | 2 | Rewrite sim for standard numbers + 12-step tick order, 18 rule tests, client controls | 29/29 tests, build ok, pause checked in browser | (1) client import broke the build while tests were green → Stop hook now builds; (2) "full night" perf test ended early at tick ~1700 → test now asserts it reaches dawn; (3) key taps lost between frames → latched taps | _fill in_ |
 | 2026-11-20 | 2 | Nights 2-3, Gió Lạc, Bùa Gió, wind (sim) + 15 tests; new client (screens, HUD, sound, settings) | 44/44 tests, build ok, browser check of menu/intro/HUD/pause, FPS 59.7 at 1280×720 | 3 wrong tests (charm on bridge, cliff boundary, wind in perf run): game was right, tests fixed with reasons; angle direction for map points was flipped; first client ran at only 33 FPS → pixel ratio 1 + Lambert | _fill in_ |
 | 2026-11-20 | 3 | Read Ticket-03; fuel model, drain, dawn win, scoring, capacity; updated 9 replaced-rule tests with reasons; 12 new tests; client fuel bars + colour-blind; ADR | 56/56 tests, build ok, browser check | 2 wrong test expectations (impossible "full lantern" case, 70 vs 69.9); stale screenshot; inline shell script quoting | 5-h limit 41% → 50% (+9 pts); context 389k → 458k |
+| 2026-11-20 | 4 | Read Ticket-04; soak, benchmark (Playwright), leaderboard server, accessibility, README/retro/release | 62/62 tests, bench 82.1/32.6 FPS, soak 0 crashes +4% | benchmark 1%-low 3.6 (shader compile stalls, found via slow-frame dump); soak +45% RSS (V8 warm-up, not a leak); Enter ignored in the name box; negative seed | 5-h limit 54% → 68% (+14 pts); context 489k → 570k |
 
 ## Token usage readings (Claude Pro plan: % of limits, no per-token price)
 
@@ -20,6 +21,9 @@ Read with the desktop app's usage tool (`get_usage`). Pro is a flat subscription
 |---|---|---|---|
 | Before reading Ticket-03 (after setup + Phases 1–2) | 41% | 71% | 389k tokens |
 | End of Phase 3 build (before evidence/tag) | 50% | 72% | 458k tokens |
+| After tagging phase-3 | 51% | 72% | 476k tokens |
+| Start of Phase 4 (after reading Ticket-04) | 54% | 72% | 489k tokens |
+| Phase 4 build done (before docs/tag) | 68% | 74% | 570k tokens |
 
 Setup + Phases 1–2 were not measured while they ran; together they used about 41% of one 5-hour window, plus some of the weekly share (the part already used before this lab can't be separated).
 

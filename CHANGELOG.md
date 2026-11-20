@@ -1,5 +1,20 @@
 # Changelog
 
+## phase-4 / v1.0.0 (Ticket-04 "Bình minh: phát hành v1.0.0", Contract v1.3)
+
+### Added
+- `bench_cmd` (`node scripts/bench.mjs`): fixed benchmark scene in a 1280×720 Chromium window with vsync off; writes `bench.json`.
+- `soak_cmd`: 10 Nights in one process with seeded random input; writes `soak.json`.
+- Local leaderboard (top 10, saved to a file by `server.js`), name prompt after Bình Minh or a loss, leaderboard screen, `node server.js --export-leaderboard out.json`.
+- Accessibility: key remapping with duplicate warning and reset, visual cues for sounds, reduced motion, larger UI (×1.25), UI text ≥ 18 px.
+- Release package `dao-den-long-v1.0.0.zip` (built game + server, run with `node server.js`).
+
+### Changed
+- `run_cmd` is now `node server.js` (was `npm start` → vite preview), needed for the file-based leaderboard and its export. `npm start` runs the same server.
+- Rendering: fireflies and Bóng Mực are instanced, and shaders are compiled before the first frame (bench on the dev laptop: 1%-low 3.6 → 32.6–39.6 FPS).
+- Contract v1.3 adds `bench_cmd` and `soak_cmd`; no rule changes.
+
+
 ## phase-3 (Ticket-03 "Đèn cạn dầu", Contract v1.2)
 
 ### Breaking changes

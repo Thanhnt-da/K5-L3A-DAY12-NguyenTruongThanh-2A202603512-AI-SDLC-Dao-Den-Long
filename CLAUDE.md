@@ -9,7 +9,10 @@
 - Play: `npm run dev` (dev server) or `npm start` (serves the built `dist/`)
 - Evidence for phase N: `node scripts/evidence.mjs N` (see skill `verify-phase`)
 
-## Current scope (Phase 3, Contract v1.2)
+## Current scope (Phase 4 / v1.0.0, Contract v1.3)
+- Release work: `bench_cmd`, `soak_cmd`, `run_cmd = node server.js` (leaderboard file + export). Spec: `docs/notes/phase-4-ticket.md`; notes `docs/notes/phase-4.md`.
+- The bench scene (`src/sim/bench.js`, `world.bench`) must stay exactly as Ticket-04 defines it; creative extras must be off in it.
+- After rendering changes run `npm run build && npm run bench` and compare with `bench.json`.
 - Specs: `docs/notes/phase-2-ticket.md` + `docs/notes/phase-3-ticket.md` (Ticket-03 replaces some Ticket-02 rules: check it first). Criteria + assumptions: `docs/notes/phase-3.md`; design: `docs/adr/`.
 - Lantern fuel is integer 1/60 units (`FUEL_MAX = 6000`); never use float fuel in the sim.
 - All numbers are the Ticket-02 **standard numbers**: never invent or "tune" them. Contract keys live in `game.contract.json`; the rest in `RULES` (`src/sim/config.js`); maps in `src/sim/maps.js`.
