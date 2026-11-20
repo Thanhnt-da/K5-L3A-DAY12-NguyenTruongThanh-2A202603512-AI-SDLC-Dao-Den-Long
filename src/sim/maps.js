@@ -12,30 +12,40 @@ const norm2 = (x, z) => {
   return [x / d, z / d];
 };
 
-// Surfaces: each returns its height at (x, z) or null when (x, z) is outside it.
-const disc = (cx, cz, r, y = 0) => (x, z) => (Math.hypot(x - cx, z - cz) <= r ? y : null);
-const rect = (x0, x1, z0, z1, y = 0) => (x, z) => (x >= x0 && x <= x1 && z >= z0 && z <= z1 ? y : null);
-const halfRing = (rIn, rOut, y) => (x, z) => {
-  const r = Math.hypot(x, z);
-  return r >= rIn && r <= rOut && z > 0 ? y : null;
-};
-/** Straight ramp along a radius: foot at rFoot (y0), top at rTop (y1), given width. */
-const ramp = (aDeg, rFoot, rTop, width, y0, y1) => {
-  const [ux, uz] = [Math.cos(rad(aDeg)), Math.sin(rad(aDeg))];
-  return (x, z) => {
-    const along = x * ux + z * uz;
-    const side = -x * uz + z * ux;
-    if (Math.abs(side) > width / 2 || along < rTop || along > rFoot) return null;
-    return y0 + ((rFoot - along) / (rFoot - rTop)) * (y1 - y0);
-  };
-};
+// Terrain shapes are plain data, so the 3D client can draw exactly what the sim uses.
+// makeSurface() turns a shape into a function (x, z) -> height or null.
+export function makeSurface(sh) {
+  switch (sh.kind) {
+    case 'disc':
+      return (x, z) => (Math.hypot(x - sh.cx, z - sh.cz) <= sh.r ? sh.y : null);
+    case 'rect':
+      return (x, z) => (x >= sh.x0 && x <= sh.x1 && z >= sh.z0 && z <= sh.z1 ? sh.y : null);
+    case 'halfRing': // the half with z > 0
+      return (x, z) => {
+        const r = Math.hypot(x, z);
+        return r >= sh.rIn && r <= sh.rOut && z > 0 ? sh.y : null;
+      };
+    case 'ramp': {
+      // straight ramp along a radius: foot at rFoot (y0), top at rTop (y1)
+      const [ux, uz] = [Math.cos(rad(sh.a)), Math.sin(rad(sh.a))];
+      return (x, z) => {
+        const along = x * ux + z * uz;
+        const side = -x * uz + z * ux;
+        if (Math.abs(side) > sh.width / 2 || along < sh.rTop || along > sh.rFoot) return null;
+        return sh.y0 + ((sh.rFoot - along) / (sh.rFoot - sh.rTop)) * (sh.y1 - sh.y0);
+      };
+    }
+    default:
+      throw new Error(`unknown terrain shape ${sh.kind}`);
+  }
+}
 
 const NIGHT1 = {
   night: 1,
   name: 'Đảo Bến',
   duration: TUNING.night1_duration_s,
   start: [0, 0, 0],
-  surfaces: [disc(0, 0, 40)],
+  shapes: [{ kind: 'disc', cx: 0, cz: 0, r: 40, y: 0 }],
   lanterns: [
     [0, 0, 25],
     [23.8, 0, 7.7],
@@ -60,7 +70,11 @@ const NIGHT2 = {
   name: 'Đảo Cau',
   duration: TUNING.night2_duration_s,
   start: [0, 0, 0],
-  surfaces: [disc(0, 0, 28), disc(70, 0, 28), rect(26, 44, -2, 2)],
+  shapes: [
+    { kind: 'disc', cx: 0, cz: 0, r: 28, y: 0 },
+    { kind: 'disc', cx: 70, cz: 0, r: 28, y: 0 },
+    { kind: 'rect', x0: 26, x1: 44, z0: -2, z1: 2, y: 0, bridge: true },
+  ],
   lanterns: [
     [0, 0, 25],
     [17, 0, -10],
@@ -89,15 +103,14 @@ const NIGHT3 = {
   name: 'Đảo Chuông',
   duration: TUNING.night3_duration_s,
   start: [0, 0, -30], // assumption B11: (0,0,0) is inside the bell tower
-  surfaces: [
-    disc(0, 0, 45, 0),
-    halfRing(12, 24, 3),
-    disc(0, 0, 8, 6),
-    ramp(30, 30, 24, 3, 0, 3),
-    ramp(150, 30, 24, 3, 0, 3),
-    disc(0, 0, 2, 14), // bell tower (8 m on level 2): a cliff nobody can climb
-  ],
-  lanterns: [
+  shapes: [
+    { kind: 'disc', cx: 0, cz: 0, r: 45, y: 0 },
+    { kind: 'halfRing', rIn: 12, rOut: 24, y: 3 },
+    { kind: 'disc', cx: 0, cz: 0, r: 8, y: 6 },
+    { kind: 'ramp', a: 30, rFoot: 30, rTop: 24, width: 3, y0: 0, y1: 3 },
+    { kind: 'ramp', a: 150, rFoot: 30, rTop: 24, width: 3, y0: 0, y1: 3 },
+    { kind: 'disc', cx: 0, cz: 0, r: 2, y: 14, tower: true }, // bell tower, 8 m on level 2: a cliff nobody can climb
+  ],  lanterns: [
     [0, 6, 6],
     [18, 3, 10],
     [-18, 3, 10],
@@ -120,6 +133,8 @@ const NIGHT3 = {
   wind: true,
   wanderAreas: [{ cx: 0, cz: 0, r: 42 }],
 };
+
+for (const m of [NIGHT1, NIGHT2, NIGHT3]) m.surfaces = m.shapes.map(makeSurface);
 
 export const MAPS = { 1: NIGHT1, 2: NIGHT2, 3: NIGHT3 };
 export const SHADE_FIRST_TICK = 300;
