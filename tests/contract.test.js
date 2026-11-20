@@ -22,8 +22,9 @@ const file = (name, obj) => {
 // Phase 2: version check changed 1.0 -> 1.1 (Ticket-02 Part 4); tuning must now equal the standard numbers.
 // Phase 3: updated to v1.2 (Ticket-03 Part 7): new fuel/win/capacity keys, Nights 240/270/300 s, new score values.
 test('game.contract.json is v1.2 and tuning matches the Ticket-02 + Ticket-03 standard numbers', () => {
-  for (const k of ['contract_version', 'team', 'build_cmd', 'run_cmd', 'headless_cmd', 'tuning']) assert.ok(k in contract, k);
-  assert.equal(contract.contract_version, '1.2');
+  // Phase 4: v1.3 adds bench_cmd and soak_cmd (Ticket-04 Part 6); tuning unchanged.
+  for (const k of ['contract_version', 'team', 'build_cmd', 'run_cmd', 'headless_cmd', 'bench_cmd', 'soak_cmd', 'tuning']) assert.ok(k in contract, k);
+  assert.equal(contract.contract_version, '1.3');
   assert.deepEqual(contract.tuning, {
     player_speed: 6, carry_capacity: 10, lantern_cost: 10, lantern_count_night1: 5, pickup_radius: 1, interact_radius: 2,
     pulse_cost: 3, pulse_radius: 5, night1_duration_s: 240, night2_duration_s: 270, night3_duration_s: 300, flames: 3,
