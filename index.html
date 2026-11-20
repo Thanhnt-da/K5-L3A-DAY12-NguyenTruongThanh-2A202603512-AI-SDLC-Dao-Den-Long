@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đảo Đèn Lồng</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0716; font-family: system-ui, sans-serif; color: #ffe7c2; }
+      #hud { position: fixed; top: 12px; left: 12px; padding: 8px 12px; background: rgba(20, 10, 30, 0.65); border-radius: 8px; font-size: 14px; line-height: 1.5; pointer-events: none; white-space: pre; }
+      #help { position: fixed; bottom: 12px; left: 12px; font-size: 12px; opacity: 0.75; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="hud"></div>
+    <div id="help">WASD/arrows: move · mouse drag or Q/E: camera · Space: jump · F: interact · R: pulse · Enter: replay</div>
+    <script type="module" src="/src/client/main.js"></script>
+  </body>
+</html>
