@@ -116,14 +116,6 @@ function makeLantern() {
   return g;
 }
 
-function makeShade() {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), std(PAL.shade, { emissive: PAL.shadeRim, emissiveIntensity: 0.25 }));
-  g.add(body);
-  g.userData = { body };
-  return g;
-}
-
 function makeDrifter() {
   const m = new THREE.Mesh(new THREE.TorusKnotGeometry(0.5, 0.08, 48, 6), std(PAL.drifter, { emissive: PAL.drifter, emissiveIntensity: 0.3 }));
   return m;
@@ -157,11 +149,34 @@ export class NightScene {
     }
     this.may = makeMay();
     this.scene.add(this.may);
-    this.maps = { lanterns: new Map(), motes: new Map(), shades: new Map(), drifters: new Map(), charms: new Map() };
-    this.moteGeo = new THREE.SphereGeometry(0.15, 8, 8);
-    this.moteMat = new THREE.MeshBasicMaterial({ color: PAL.moteCore });
-    this.haloMat = new THREE.MeshBasicMaterial({ color: PAL.moteHalo, transparent: true, opacity: 0.35 });
-    this.haloGeo = new THREE.SphereGeometry(0.3, 8, 8);
+    this.maps = { lanterns: new Map(), drifters: new Map(), charms: new Map() };
+    // Fireflies and Bóng Mực are drawn as InstancedMesh: one draw call each, however many
+    // there are (Ticket-04 benchmark: 100 fireflies + 200 shades). Capacity grows as needed.
+    this.inst = {
+      moteCore: this.makeInstanced(new THREE.SphereGeometry(0.15, 8, 6), new THREE.MeshBasicMaterial({ color: PAL.moteCore }), 64),
+      moteHalo: this.makeInstanced(new THREE.SphereGeometry(0.3, 8, 6), new THREE.MeshBasicMaterial({ color: PAL.moteHalo, transparent: true, opacity: 0.35, depthWrite: false }), 64),
+      shade: this.makeInstanced(new THREE.SphereGeometry(0.8, 14, 10), std(0xffffff, { emissive: PAL.shadeRim, emissiveIntensity: 0.3 }), 32),
+    };
+    this.tmp = new THREE.Object3D();
+    this.tmpColor = new THREE.Color();
+  }
+
+  makeInstanced(geo, mat, cap) {
+    const m = new THREE.InstancedMesh(geo, mat, cap);
+    m.count = 0;
+    m.frustumCulled = false;
+    this.scene.add(m);
+    return m;
+  }
+
+  /** Make sure an InstancedMesh can hold n instances (rebuilds it bigger when needed). */
+  ensure(key, n) {
+    const m = this.inst[key];
+    if (n <= m.instanceMatrix.count) return m;
+    this.scene.remove(m);
+    const bigger = this.makeInstanced(m.geometry, m.material, Math.max(n, m.instanceMatrix.count * 2));
+    this.inst[key] = bigger;
+    return bigger;
   }
 
   sync(map, list, make) {
@@ -212,21 +227,32 @@ export class NightScene {
       u.head.rotation.z = l.lit ? 0 : 0.2; // unlit lanterns tilt (shape cue, not only colour)
       u.torn.visible = !l.lit;
     }
-    this.sync(this.maps.motes, w.motes, () => {
-      const g = new THREE.Group();
-      g.add(new THREE.Mesh(this.moteGeo, this.moteMat), new THREE.Mesh(this.haloGeo, this.haloMat));
-      return g;
+    const o = this.tmp;
+    const core = this.ensure('moteCore', w.motes.length);
+    const halo = this.ensure('moteHalo', w.motes.length);
+    w.motes.forEach((m, i) => {
+      o.position.set(m.pos[0], m.pos[1] + 0.8 + 0.2 * Math.sin(t * 3 + m.pos[0]), m.pos[2]);
+      o.scale.setScalar(1);
+      o.updateMatrix();
+      core.setMatrixAt(i, o.matrix);
+      halo.setMatrixAt(i, o.matrix);
     });
-    for (const m of w.motes) this.maps.motes.get(m.id).position.set(m.pos[0], m.pos[1] + 0.8 + 0.2 * Math.sin(t * 3 + m.pos[0]), m.pos[2]);
-    this.sync(this.maps.shades, w.shades, makeShade);
-    for (const s of w.shades) {
-      const g = this.maps.shades.get(s.id);
-      g.position.set(...s.pos);
-      g.userData.body.material.color.setHex(s.state === 'stunned' ? PAL.shadeStunned : PAL.shade);
-      g.userData.body.material.emissive.setHex(colorBlind ? PAL.shadeRimCB : PAL.shadeRim);
-      g.userData.body.material.emissiveIntensity = s.state === 'drain' ? 0.6 : 0.25;
-      g.scale.setScalar(s.state === 'spawning' ? 0.5 : 1);
-    }
+    core.count = halo.count = w.motes.length;
+    core.instanceMatrix.needsUpdate = halo.instanceMatrix.needsUpdate = true;
+
+    const sh = this.ensure('shade', w.shades.length);
+    sh.material.emissive.setHex(colorBlind ? PAL.shadeRimCB : PAL.shadeRim);
+    w.shades.forEach((s, i) => {
+      o.position.set(...s.pos);
+      o.scale.setScalar(s.state === 'spawning' ? 0.5 : 1);
+      o.updateMatrix();
+      sh.setMatrixAt(i, o.matrix);
+      // stunned = grey-violet; draining = lighter so it stands out; otherwise ink black
+      sh.setColorAt(i, this.tmpColor.setHex(s.state === 'stunned' ? PAL.shadeStunned : s.state === 'drain' ? 0x3a1a5a : PAL.shade));
+    });
+    sh.count = w.shades.length;
+    sh.instanceMatrix.needsUpdate = true;
+    if (sh.instanceColor) sh.instanceColor.needsUpdate = true;
     this.sync(this.maps.drifters, w.drifters, makeDrifter);
     for (const d of w.drifters) {
       const m = this.maps.drifters.get(d.id);
@@ -244,9 +270,15 @@ export class NightScene {
     const lit = w.lanterns.filter((l) => l.lit).length;
     this.ambient.intensity = 0.15 + 0.55 * (lit / w.lanterns.length); // Ticket-02 Part 3.8
 
-    const th = (camYawDeg * Math.PI) / 180;
-    this.camera.position.set(p.pos[0] - Math.sin(th) * 9, p.pos[1] + 5, p.pos[2] - Math.cos(th) * 9);
-    this.camera.lookAt(p.pos[0], p.pos[1] + 1.2, p.pos[2]);
+    if (this.cameraOverride) {
+      // benchmark: fixed orbit around (0,0,0)
+      this.camera.position.set(...this.cameraOverride(t));
+      this.camera.lookAt(0, 0, 0);
+    } else {
+      const th = (camYawDeg * Math.PI) / 180;
+      this.camera.position.set(p.pos[0] - Math.sin(th) * 9, p.pos[1] + 5, p.pos[2] - Math.cos(th) * 9);
+      this.camera.lookAt(p.pos[0], p.pos[1] + 1.2, p.pos[2]);
+    }
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -255,6 +287,12 @@ export class NightScene {
     const v = new THREE.Vector3(pos[0], pos[1] + 3, pos[2]).project(this.camera);
     if (v.z > 1) return null;
     return { x: (v.x + 1) / 2, y: (1 - v.y) / 2 };
+  }
+
+  /** Compile every shader now, so nothing stalls the first time it comes into view. */
+  warm(w) {
+    this.render(w, 0, 0); // creates all lanterns/charms/instances
+    this.renderer.compile(this.scene, this.camera);
   }
 
   resize(w, h) {

@@ -10,6 +10,7 @@ import { NightScene } from './scene.js';
 import { Hud } from './hud.js';
 import { Sound } from './audio.js';
 import { loadSettings, saveSettings } from './settings.js';
+import { runBench } from './benchmode.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -97,6 +98,7 @@ function startNight(n) {
   world = createWorld({ seed: (Date.now() >>> 0) ^ (n * 7919), night: n });
   scene = new NightScene(renderer, world.map);
   scene.resize(innerWidth, innerHeight);
+  scene.warm(world);
   camYawDeg = 0;
   acc = 0;
   lastCountdown = null;
@@ -246,6 +248,14 @@ function resize() {
 }
 addEventListener('resize', resize);
 resize();
-showScreen('menu');
-hud.show(false);
-requestAnimationFrame(frame);
+const urlParams = new URLSearchParams(location.search);
+if (urlParams.has('bench')) {
+  // Ticket-04 benchmark scene: no menus, HUD or input
+  showScreen(null);
+  hud.show(false);
+  runBench(renderer, urlParams);
+} else {
+  showScreen('menu');
+  hud.show(false);
+  requestAnimationFrame(frame);
+}

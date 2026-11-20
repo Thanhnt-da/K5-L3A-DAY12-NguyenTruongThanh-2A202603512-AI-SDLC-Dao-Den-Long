@@ -231,6 +231,7 @@ export function createWorld({ seed = 0, night = 1, scenario = null } = {}) {
 
 function detectable(world, s) {
   const p = world.player;
+  if (world.bench) return false; // bench scene: shades keep wandering
   return p.fallWait === 0 && distXZ(p.pos, s.pos) <= RULES.shadeDetect;
 }
 
@@ -354,7 +355,7 @@ export function step(world, input) {
   world.drifters = world.drifters.filter((d) => d.state !== 'removed');
   // Ticket-03: fuel burn (1/s) and Bóng Mực drain (5/s each) in step 2 ...
   for (const l of world.lanterns) {
-    if (!l.lit) continue;
+    if (!l.lit || world.bench) continue; // bench scene: no fuel burn
     l.fuel -= TUNING.fuel_decay_per_s; // 1 unit of 1/60 fuel per tick
     for (const s of world.shades) {
       if (s.state !== 'drain' || s.lanternId !== l.id) continue;
@@ -400,8 +401,8 @@ export function step(world, input) {
   const active = p.fallWait === 0;
   const touching = (pos, r) => distXZ(p.pos, pos) <= r && Math.abs(p.pos[1] - pos[1]) <= RULES.pickupHeight;
 
-  // 4. pick up fireflies and charms
-  if (active) {
+  // 4. pick up fireflies and charms (off in the bench scene)
+  if (active && !world.bench) {
     const keep = [];
     for (const m of world.motes) {
       if (p.carried < capacityOf(p) && m.born < world.simTick && touching(m.pos, TUNING.pickup_radius)) {
@@ -609,8 +610,8 @@ export function step(world, input) {
     d.pos[1] = (topAt(map, d.pos[0], d.pos[2]) ?? 0) + RULES.shadeY;
   }
 
-  // 9. contact: Gió Lạc steal first, then Bóng Mực hit (by increasing id)
-  if (active) {
+  // 9. contact: Gió Lạc steal first, then Bóng Mực hit (by increasing id); no damage in the bench scene
+  if (active && !world.bench) {
     for (const d of [...world.drifters].sort((a, b) => compareIds(a.id, b.id))) {
       if (d.state !== 'chase' || d.hasStolen || p.carried <= 0) continue;
       if (distXZ(p.pos, d.pos) > RULES.drifterHitRadius || Math.abs(p.pos[1] - d.pos[1]) > RULES.shadeHitHeight) continue;
@@ -669,6 +670,8 @@ export function step(world, input) {
     const id = nextId(world, 'D', new Set(world.drifters.map((d) => d.id)));
     world.drifters.push(newDrifter(id, [pt[0], (topAt(map, pt[0], pt[2]) ?? 0) + RULES.shadeY, pt[2]]));
   }
+
+  if (world.bench) return events; // bench scene: the Night never ends
 
   // 11. win / lose (Ticket-03): no flames always loses first; at dawn, win needs ceil(0.6 x lanterns) lit
   if (p.flames <= 0) {

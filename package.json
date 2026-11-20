@@ -1,6 +1,6 @@
 {
   "name": "dao-den-long",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Đảo Đèn Lồng: 3D lantern-keeper game (Three.js) with a deterministic headless runner.",
   "type": "module",
@@ -10,15 +10,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "vite preview --port 4173 --strictPort",
+    "start": "node server.js",
     "test": "node --test tests/",
-    "headless": "node src/headless/cli.js"
+    "headless": "node src/headless/cli.js",
+    "bench": "node scripts/bench.mjs --seed 42 --duration 30 --out bench.json",
+    "soak": "node --expose-gc --jitless --max-semi-space-size=1 src/headless/soak.js --seed 7 --nights 10 --out soak.json"
   },
   "license": "MIT",
   "dependencies": {
     "three": "^0.187.0"
   },
   "devDependencies": {
+    "playwright": "^1.65.1",
     "vite": "^8.3.8"
   }
 }
